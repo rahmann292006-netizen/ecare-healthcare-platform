@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { usePathname } from "next/navigation";
 
 const links = [
@@ -14,7 +15,19 @@ const links = [
 ];
 
 export function Navbar() {
+  return (
+    <Suspense fallback={<NavbarContent pathname={null} />}>
+      <NavbarWithPathname />
+    </Suspense>
+  );
+}
+
+function NavbarWithPathname() {
   const pathname = usePathname();
+  return <NavbarContent pathname={pathname} />;
+}
+
+function NavbarContent({ pathname }: { pathname: string | null }) {
   return (
     <nav
       className="sticky top-0 z-20 border-b border-solid border-border bg-background/95 backdrop-blur"
