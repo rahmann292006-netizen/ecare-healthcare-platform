@@ -5,6 +5,8 @@ import { DEMO_PACKAGES } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+export const instant = false;
+
 export default async function PackageDetailPage({
   params,
 }: {
