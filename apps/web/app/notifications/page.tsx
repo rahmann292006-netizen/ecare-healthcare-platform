@@ -84,4 +84,3 @@ function NotificationItem({
   );
 }
 
-import { Card } from "@/components/ui/card";

@@ -19,7 +19,7 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export interface HospitalListResponse {
-  items: any[];
+  items: Hospital[];
   total: number;
   limit: number;
   offset: number;
@@ -51,7 +51,7 @@ export async function getHospital(id: number): Promise<Hospital> {
 }
 
 export interface DoctorListResponse {
-  items: any[];
+  items: Doctor[];
   total: number;
   limit: number;
   offset: number;
@@ -81,7 +81,7 @@ export async function getDoctor(id: number): Promise<Doctor> {
 }
 
 export interface LabListResponse {
-  items: any[];
+  items: DiagnosticLab[];
   total: number;
   limit: number;
   offset: number;
@@ -113,7 +113,7 @@ export async function getLab(id: number): Promise<DiagnosticLab> {
 }
 
 export interface TestListResponse {
-  items: any[];
+  items: DiagnosticTest[];
   total: number;
   limit: number;
   offset: number;

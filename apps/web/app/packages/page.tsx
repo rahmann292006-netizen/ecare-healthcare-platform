@@ -1,9 +1,7 @@
 "use strict";
 
-import Link from "next/link";
 import { DEMO_PACKAGES } from "@/lib/mock-data";
 import { PackageCard } from "@/components/package-card";
-import { Badge } from "@/components/ui/badge";
 
 export default function PackagesPage() {
   return (

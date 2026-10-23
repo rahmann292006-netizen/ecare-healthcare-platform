@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {}
+type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
 
 export function Select({ className, ...props }: SelectProps) {
   return (

@@ -1,6 +1,5 @@
 "use strict";
 
-import Link from "next/link";
 import { SearchBar } from "@/components/search-bar";
 import { CategoryCard } from "@/components/category-card";
 import { PackageCard } from "@/components/package-card";
@@ -119,7 +118,7 @@ export default function Home() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 flex shrink-0 rounded bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">4</span>
-                All listings default to "Not verified" until confirmed by the provider.
+                All listings default to &quot;Not verified&quot; until confirmed by the provider.
               </li>
             </ul>
           </div>

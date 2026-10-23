@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { DEMO_REMINDERS } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 
 const upcoming = DEMO_REMINDERS.filter((r) => !r.completed);
 const completed = DEMO_REMINDERS.filter((r) => r.completed);

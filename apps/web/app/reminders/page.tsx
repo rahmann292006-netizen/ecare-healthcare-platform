@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { DEMO_REMINDERS } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -106,7 +105,7 @@ export default function RemindersPage() {
                   <label className="block text-sm font-medium text-ink mb-1">Category</label>
                   <Select
                     value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value as any })}
+                    onChange={(e) => setForm({ ...form, category: e.target.value as DemoReminder["category"] })}
                   >
                     <option value="checkup">Checkup</option>
                     <option value="vaccination">Vaccination</option>
@@ -128,7 +127,7 @@ export default function RemindersPage() {
                 <label className="block text-sm font-medium text-ink mb-1">Repeat interval</label>
                 <Select
                   value={form.repeatInterval}
-                  onChange={(e) => setForm({ ...form, repeatInterval: e.target.value as any })}
+                  onChange={(e) => setForm({ ...form, repeatInterval: e.target.value as DemoReminder["repeatInterval"] })}
                 >
                   <option value="none">None</option>
                   <option value="daily">Daily</option>

@@ -26,7 +26,7 @@ export interface DemoPackage {
 export interface DemoReminder {
   id: string;
   title: string;
-  category: string;
+  category: "checkup" | "dental" | "vaccination" | "other";
   date: string;
   repeatInterval: "none" | "daily" | "weekly" | "monthly";
   completed: boolean;

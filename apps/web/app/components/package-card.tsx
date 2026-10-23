@@ -1,6 +1,5 @@
 "use strict";
 
-import Link from "next/link";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 
@@ -17,7 +16,6 @@ export interface PackageCardProps {
 }
 
 export function PackageCard({
-  id,
   title,
   provider,
   providerType,
