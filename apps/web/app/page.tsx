@@ -1,6 +1,6 @@
 "use strict";
 
-import { SearchBar } from "@/components/search-bar";
+import { HomeSearch } from "@/components/home-search";
 import { CategoryCard } from "@/components/category-card";
 import { PackageCard } from "@/components/package-card";
 import { DEMO_PACKAGES } from "@/lib/mock-data";
@@ -56,14 +56,7 @@ export default function Home() {
             </p>
           </div>
 
-          <SearchBar
-            placeholder="Search hospitals, doctors, diagnostic labs..."
-            onSearch={(query) => {
-              if (typeof window !== "undefined") {
-                window.location.href = `/find?search=${encodeURIComponent(query)}`;
-              }
-            }}
-          />
+          <HomeSearch />
         </div>
       </section>
 
