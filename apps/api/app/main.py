@@ -1,13 +1,11 @@
-import os
-
-import psycopg
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from sqlalchemy import text
 
 load_dotenv()
 
 # Import database module and models so SQLAlchemy metadata is registered
-# for Alembic migrations. Health endpoints continue to use psycopg directly.
+# for Alembic migrations and use its configured engine for health checks.
 from app.database import engine, Base  # noqa: E402
 import app.models  # noqa: E402, F401  (registers all models with Base.metadata)
 
@@ -26,9 +24,9 @@ def health():
 @app.get("/health/db")
 def health_db():
     try:
-        with psycopg.connect(os.environ["DATABASE_URL"], connect_timeout=3) as conn:
-            conn.execute("SELECT 1")
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
         return {"database": "ok"}
-    except Exception as e:
-        print("DB ERROR:", repr(e))
+    except Exception as exc:
+        print(f"DB connectivity check failed ({type(exc).__name__})")
         raise HTTPException(status_code=503, detail="Database not reachable")
