@@ -19,6 +19,14 @@ def slugify(value: str) -> str:
     return slug.strip("-") or "untitled"
 
 
+class SpecialityResponse(BaseModel):
+    id: int
+    name: str
+    slug: str
+
+    model_config = {"from_attributes": True}
+
+
 # ---------------------------------------------------------------------------
 # Hospital schemas
 # ---------------------------------------------------------------------------
@@ -105,6 +113,12 @@ class HospitalResponse(HospitalBase):
 
     id: int
     verification_status: str
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    is_verified: bool = False
+    is_demo: bool = False
+    specialities: list[SpecialityResponse] = Field(default_factory=list)
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -178,6 +192,12 @@ class DoctorUpdate(BaseModel):
 class DoctorResponse(DoctorBase):
     id: int
     verification_status: str
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    is_verified: bool = False
+    is_demo: bool = False
+    specialities: list[SpecialityResponse] = Field(default_factory=list)
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -249,6 +269,11 @@ class LabUpdate(BaseModel):
 class LabResponse(LabBase):
     id: int
     verification_status: str
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    is_verified: bool = False
+    is_demo: bool = False
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -298,6 +323,38 @@ class TestResponse(TestBase):
 
 class TestListResponse(BaseModel):
     items: list[TestResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class ProviderDirectoryItem(BaseModel):
+    id: int
+    provider_type: str
+    name: str
+    slug: str
+    description: Optional[str] = None
+    address: Optional[str] = None
+    locality: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    hospital_type: Optional[str] = None
+    opd_type: Optional[str] = None
+    hospital_id: Optional[int] = None
+    specialities: list[SpecialityResponse] = Field(default_factory=list)
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    verified_at: Optional[datetime] = None
+    is_verified: bool = False
+    is_demo: bool = False
+    verification_status: str = "unverified"
+
+
+class ProviderDirectoryResponse(BaseModel):
+    items: list[ProviderDirectoryItem]
     total: int
     limit: int
     offset: int

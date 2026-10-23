@@ -44,6 +44,11 @@ class Hospital(Base):
     phone = Column(String(50), nullable=True)
     email = Column(String(255), nullable=True)
     website = Column(String(500), nullable=True)
+    source = Column(String(500), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
+    is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
     emergency_services = Column(Boolean, nullable=False, server_default="false")
     operating_hours = Column(Text, nullable=True)
     verification_status = Column(
@@ -61,6 +66,7 @@ class Hospital(Base):
     )
 
     doctors = relationship("Doctor", back_populates="hospital", cascade="all, delete-orphan")
+    opds = relationship("OPD", back_populates="hospital")
 
     __table_args__ = (
         CheckConstraint(
@@ -75,6 +81,8 @@ class Hospital(Base):
             "verification_status IN ('unverified', 'pending', 'verified', 'rejected')",
             name="chk_hospitals_verification_status",
         ),
+        CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_hospitals_verified_provenance"),
+        CheckConstraint("NOT (is_demo AND is_verified)", name="chk_hospitals_demo_unverified"),
         Index("ix_hospitals_city_state", "city", "state"),
         Index("ix_hospitals_verification_active", "verification_status", "is_active"),
     )
@@ -92,6 +100,11 @@ class Doctor(Base):
     languages = Column(String(255), nullable=True)
     consultation_fee = Column(Numeric(10, 2), nullable=True)
     phone = Column(String(50), nullable=True)
+    source = Column(String(500), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
+    is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
     hospital_id = Column(
         Integer, ForeignKey("hospitals.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -110,6 +123,7 @@ class Doctor(Base):
     )
 
     hospital = relationship("Hospital", back_populates="doctors")
+    specialities = relationship("Speciality", secondary="doctor_specialities", back_populates="doctors")
 
     __table_args__ = (
         CheckConstraint(
@@ -124,6 +138,8 @@ class Doctor(Base):
             "verification_status IN ('unverified', 'pending', 'verified', 'rejected')",
             name="chk_doctors_verification_status",
         ),
+        CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_doctors_verified_provenance"),
+        CheckConstraint("NOT (is_demo AND is_verified)", name="chk_doctors_demo_unverified"),
         Index("ix_doctors_hospital_id", "hospital_id"),
         Index("ix_doctors_specialization", "specializations"),
         Index("ix_doctors_verification_active", "verification_status", "is_active"),
@@ -142,6 +158,11 @@ class DiagnosticLab(Base):
     city = Column(String(100), nullable=False, server_default="Raichur", index=True)
     state = Column(String(100), nullable=False, server_default="Karnataka", index=True)
     phone = Column(String(50), nullable=True)
+    source = Column(String(500), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
+    is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
     home_sample_collection = Column(Boolean, nullable=False, server_default="false")
     verification_status = Column(
         String(50), nullable=False, server_default="unverified", index=True
@@ -166,6 +187,8 @@ class DiagnosticLab(Base):
             "verification_status IN ('unverified', 'pending', 'verified', 'rejected')",
             name="chk_diagnostic_labs_verification_status",
         ),
+        CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_diagnostic_labs_verified_provenance"),
+        CheckConstraint("NOT (is_demo AND is_verified)", name="chk_diagnostic_labs_demo_unverified"),
         Index("ix_diagnostic_labs_city_state", "city", "state"),
         Index("ix_diagnostic_labs_verification_active", "verification_status", "is_active"),
     )
@@ -206,4 +229,70 @@ class DiagnosticTest(Base):
         ),
         Index("ix_diagnostic_tests_lab_id", "lab_id"),
         Index("ix_diagnostic_tests_availability", "availability_status"),
+    )
+
+
+class Speciality(Base):
+    __tablename__ = "specialities"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(120), nullable=False, unique=True)
+    slug = Column(String(140), nullable=False, unique=True)
+    is_active = Column(Boolean, nullable=False, server_default="true", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    hospitals = relationship("Hospital", secondary="hospital_specialities", back_populates="specialities")
+    doctors = relationship("Doctor", secondary="doctor_specialities", back_populates="specialities")
+
+
+class HospitalSpeciality(Base):
+    __tablename__ = "hospital_specialities"
+    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="CASCADE"), primary_key=True)
+    speciality_id = Column(Integer, ForeignKey("specialities.id", ondelete="CASCADE"), primary_key=True)
+    __table_args__ = (Index("ix_hospital_specialities_speciality_id", "speciality_id"),)
+
+
+class DoctorSpeciality(Base):
+    __tablename__ = "doctor_specialities"
+    doctor_id = Column(Integer, ForeignKey("doctors.id", ondelete="CASCADE"), primary_key=True)
+    speciality_id = Column(Integer, ForeignKey("specialities.id", ondelete="CASCADE"), primary_key=True)
+    __table_args__ = (Index("ix_doctor_specialities_speciality_id", "speciality_id"),)
+
+
+class OPD(Base):
+    __tablename__ = "opds"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
+    description = Column(Text, nullable=True)
+    opd_type = Column(String(100), nullable=True)
+    hospital_id = Column(Integer, ForeignKey("hospitals.id", ondelete="SET NULL"), nullable=True, index=True)
+    address = Column(Text, nullable=True)
+    locality = Column(String(255), nullable=True, index=True)
+    city = Column(String(100), nullable=True, index=True)
+    state = Column(String(100), nullable=True, index=True)
+    pincode = Column(String(20), nullable=True)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(255), nullable=True)
+    website = Column(String(500), nullable=True)
+    operating_hours = Column(Text, nullable=True)
+    source = Column(String(500), nullable=True)
+    source_url = Column(String(1000), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
+    is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
+    verification_status = Column(String(50), nullable=False, server_default="unverified", index=True)
+    is_active = Column(Boolean, nullable=False, server_default="true", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    hospital = relationship("Hospital", back_populates="opds")
+
+    __table_args__ = (
+        CheckConstraint("verification_status IN ('unverified', 'pending', 'verified', 'rejected')", name="chk_opds_verification_status"),
+        CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_opds_verified_provenance"),
+        CheckConstraint("NOT (is_demo AND is_verified)", name="chk_opds_demo_unverified"),
+        Index("ix_opds_city_state", "city", "state"),
+        Index("ix_opds_verification_active", "verification_status", "is_active"),
     )

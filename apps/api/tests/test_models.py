@@ -4,16 +4,22 @@ No real provider data is inserted. No credentials are logged or printed.
 """
 
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import CheckConstraint, inspect
 
 from app.database import Base
-from app.models import Hospital, Doctor, DiagnosticLab, DiagnosticTest
+from app.models import (
+    Hospital, Doctor, DiagnosticLab, DiagnosticTest, Speciality,
+    HospitalSpeciality, DoctorSpeciality, OPD,
+)
 
 
 def test_base_metadata_registers_all_models():
     """All four models are registered with SQLAlchemy Base.metadata."""
     table_names = set(Base.metadata.tables.keys())
-    expected = {"hospitals", "doctors", "diagnostic_labs", "diagnostic_tests"}
+    expected = {
+        "hospitals", "doctors", "diagnostic_labs", "diagnostic_tests",
+        "specialities", "hospital_specialities", "doctor_specialities", "opds",
+    }
     assert expected.issubset(table_names), f"Missing tables: {expected - table_names}"
 
 
@@ -154,3 +160,26 @@ def test_verification_status_values():
                             if hasattr(c, 'name') and c.name]
         status_constraint = [n for n in constraint_names if "verification_status" in n]
         assert status_constraint, f"{model.__name__} missing verification_status constraint"
+
+
+def test_provider_provenance_constraints_and_defaults():
+    """Existing providers default to unverified with source data left unknown."""
+    for model in [Hospital, Doctor, DiagnosticLab, OPD]:
+        columns = model.__table__.columns
+        assert columns.source.nullable
+        assert columns.source_url.nullable
+        assert columns.verified_at.nullable
+        assert columns.is_verified.server_default is not None
+        assert columns.is_demo.server_default is not None
+        checks = {constraint.name for constraint in model.__table__.constraints
+                  if isinstance(constraint, CheckConstraint)}
+        assert f"chk_{model.__tablename__}_verified_provenance" in checks
+        assert f"chk_{model.__tablename__}_demo_unverified" in checks
+
+
+def test_speciality_join_keys_and_opd_hospital_link():
+    assert HospitalSpeciality.__table__.primary_key.columns.keys() == ["hospital_id", "speciality_id"]
+    assert DoctorSpeciality.__table__.primary_key.columns.keys() == ["doctor_id", "speciality_id"]
+    assert OPD.__table__.c.hospital_id.nullable
+    assert any(fk.target_fullname == "hospitals.id" for fk in OPD.__table__.c.hospital_id.foreign_keys)
+    assert hasattr(Hospital, "specialities") and hasattr(Doctor, "specialities")
