@@ -24,7 +24,7 @@ export function ProviderCard({
   services,
   onDetails,
 }: ProviderCardProps) {
-  const statusMap: Record<string, { label: string; variant: keyof React.ComponentProps<typeof Badge>["variant"] }> = {
+  const statusMap: Record<string, { label: string; variant: NonNullable<React.ComponentProps<typeof Badge>["variant"]> }> = {
     verified: { label: "Verified", variant: "verified" },
     pending: { label: "Pending", variant: "stale" },
     rejected: { label: "Rejected", variant: "unverified" },
