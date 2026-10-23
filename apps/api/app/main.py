@@ -6,7 +6,16 @@ from fastapi import FastAPI, HTTPException
 
 load_dotenv()
 
+# Import database module and models so SQLAlchemy metadata is registered
+# for Alembic migrations. Health endpoints continue to use psycopg directly.
+from app.database import engine, Base  # noqa: E402
+import app.models  # noqa: E402, F401  (registers all models with Base.metadata)
+
+from app.api.v1.api import api_router  # noqa: E402
+
 app = FastAPI(title="ecare API")
+
+app.include_router(api_router)
 
 
 @app.get("/health")
