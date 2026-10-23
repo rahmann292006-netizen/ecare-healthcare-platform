@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 export default function ProviderPage() {
   return (
@@ -32,9 +31,12 @@ export default function ProviderPage() {
               Providers can add or edit package listings through the backend
               API (write endpoints require development-mode authorization).
             </p>
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/packages">Browse packages</Link>
-            </Button>
+            <Link
+              href="/packages"
+              className="inline-flex items-center justify-center rounded-[var(--radius-control)] font-medium transition-colors border border-solid border-border bg-background hover:bg-navy-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700 px-3 py-1.5 text-sm"
+            >
+              Browse packages
+            </Link>
           </div>
         </div>
 
