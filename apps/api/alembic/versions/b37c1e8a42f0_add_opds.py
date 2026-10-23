@@ -46,7 +46,7 @@ def upgrade() -> None:
         sa.CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_opds_verified_provenance"),
         sa.CheckConstraint("NOT (is_demo AND is_verified)", name="chk_opds_demo_unverified"),
     )
-    for column in ("name", "hospital_id", "locality", "city", "state", "is_verified", "is_demo", "verification_status", "is_active"):
+    for column in ("id", "name", "hospital_id", "locality", "city", "state", "is_verified", "is_demo", "verification_status", "is_active"):
         op.create_index(f"ix_opds_{column}", "opds", [column])
     op.create_index("ix_opds_slug", "opds", ["slug"], unique=True)
     op.create_index("ix_opds_city_state", "opds", ["city", "state"])
@@ -57,6 +57,6 @@ def downgrade() -> None:
     op.drop_index("ix_opds_verification_active", table_name="opds")
     op.drop_index("ix_opds_city_state", table_name="opds")
     op.drop_index("ix_opds_slug", table_name="opds")
-    for column in ("is_active", "verification_status", "is_demo", "is_verified", "state", "city", "locality", "hospital_id", "name"):
+    for column in ("is_active", "verification_status", "is_demo", "is_verified", "state", "city", "locality", "hospital_id", "name", "id"):
         op.drop_index(f"ix_opds_{column}", table_name="opds")
     op.drop_table("opds")
