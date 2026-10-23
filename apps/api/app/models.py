@@ -66,6 +66,7 @@ class Hospital(Base):
     )
 
     doctors = relationship("Doctor", back_populates="hospital", cascade="all, delete-orphan")
+    specialities = relationship("Speciality", secondary="hospital_specialities", back_populates="hospitals")
     opds = relationship("OPD", back_populates="hospital")
 
     __table_args__ = (
