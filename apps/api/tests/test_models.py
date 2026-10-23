@@ -5,6 +5,7 @@ No real provider data is inserted. No credentials are logged or printed.
 
 import pytest
 from sqlalchemy import CheckConstraint, inspect
+from sqlalchemy.orm import configure_mappers
 
 from app.database import Base
 from app.models import (
@@ -183,3 +184,11 @@ def test_speciality_join_keys_and_opd_hospital_link():
     assert OPD.__table__.c.hospital_id.nullable
     assert any(fk.target_fullname == "hospitals.id" for fk in OPD.__table__.c.hospital_id.foreign_keys)
     assert hasattr(Hospital, "specialities") and hasattr(Doctor, "specialities")
+
+
+def test_speciality_relationship_mappers_configure_without_database_connection():
+    configure_mappers()
+    assert hasattr(Hospital, "specialities")
+    assert hasattr(Doctor, "specialities")
+    assert hasattr(Speciality, "hospitals")
+    assert hasattr(Speciality, "doctors")
