@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DEMO_REMINDERS } from "@/lib/mock-data";
+import { DEMO_REMINDERS, type DemoReminder } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,14 @@ export default function RemindersPage() {
     DEMO_REMINDERS.map((r) => ({ ...r }))
   );
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string;
+    category: DemoReminder["category"];
+    date: string;
+    repeatInterval: DemoReminder["repeatInterval"];
+    childProfile: string;
+    vaccinationDate: string;
+  }>({
     title: "",
     category: "checkup",
     date: "",
@@ -27,7 +34,7 @@ export default function RemindersPage() {
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title || !form.date) return;
-    const newReminder = {
+    const newReminder: DemoReminder = {
       id: `rem-${Date.now()}`,
       title: form.title,
       category: form.category,

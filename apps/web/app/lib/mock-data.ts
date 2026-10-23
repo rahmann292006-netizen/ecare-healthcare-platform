@@ -28,7 +28,7 @@ export interface DemoReminder {
   title: string;
   category: "checkup" | "dental" | "vaccination" | "other";
   date: string;
-  repeatInterval: "none" | "daily" | "weekly" | "monthly";
+  repeatInterval: "none" | "daily" | "weekly" | "monthly" | "yearly" | "half-yearly";
   completed: boolean;
   childProfile?: string;
   vaccinationDate?: string;
