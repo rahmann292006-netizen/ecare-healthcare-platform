@@ -18,6 +18,10 @@ from sqlalchemy.orm import sessionmaker, Session
 
 load_dotenv()
 
+from tests.database_guard import require_test_database  # noqa: E402
+
+require_test_database()
+
 from app.main import app  # noqa: E402
 from app.database import get_db  # noqa: E402
 

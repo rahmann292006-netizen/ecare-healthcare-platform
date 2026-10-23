@@ -9,6 +9,10 @@ import pytest  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
+from tests.database_guard import require_test_database  # noqa: E402
+
+require_test_database()
+
 from app.database import Base  # noqa: E402
 
 

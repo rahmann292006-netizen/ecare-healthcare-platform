@@ -8,6 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from tests.database_guard import require_test_database  # noqa: E402
+
+require_test_database()
+
 from app.database import engine, SessionLocal, Base  # noqa: E402
 from app.models import Hospital, Doctor, DiagnosticLab, DiagnosticTest  # noqa: E402
 
