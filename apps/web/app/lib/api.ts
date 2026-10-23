@@ -30,6 +30,7 @@ export interface Hospital {
   name: string;
   slug: string;
   address: string;
+  hospital_type: string | null;
   locality: string | null;
   city: string;
   state: string;
