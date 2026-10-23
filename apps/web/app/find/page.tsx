@@ -109,7 +109,7 @@ export default function FindPage() {
   }, [providerType, search, locality]);
 
   useEffect(() => {
-    fetchProviders();
+    void Promise.resolve().then(fetchProviders);
   }, [fetchProviders]);
 
   const typeLabels: Record<ProviderType, string> = {
