@@ -100,6 +100,7 @@ def create_lab(
         city=lab_in.city,
         state=lab_in.state,
         phone=lab_in.phone,
+        operational_status=lab_in.operational_status,
         home_sample_collection=lab_in.home_sample_collection,
     )
     db.add(lab)

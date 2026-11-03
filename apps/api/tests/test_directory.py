@@ -75,6 +75,9 @@ def test_provider_directory_filters_and_never_infers_specialities(api_client, db
     assert doctor_result["is_verified"] is False
     assert doctor_result["is_demo"] is False
     assert doctor_result["source"] is None
+    assert doctor_result["operational_status"] == "unknown"
+    assert doctor_result["emergency_services"] is None
+    assert doctor_result["home_sample_collection"] is None
 
 
 def test_provider_directory_types_pagination_sort_and_total(api_client, db_session):

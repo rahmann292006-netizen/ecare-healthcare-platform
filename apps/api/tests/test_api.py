@@ -11,12 +11,9 @@ import os
 from typing import Generator
 
 import pytest
-from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-
-load_dotenv()
 
 from tests.database_guard import require_test_database  # noqa: E402
 
@@ -113,7 +110,30 @@ def test_create_hospital_authorized(client: TestClient):
     assert data["slug"] == "raichur-general-hospital"
     assert data["verification_status"] == "unverified"
     assert data["is_active"] is True
+    assert data["operational_status"] == "unknown"
     assert data["id"] is not None
+
+
+@pytest.mark.parametrize(
+    "operational_status,emergency_services",
+    [("unknown", None), ("operational", True), ("not_operational", False)],
+)
+def test_hospital_status_and_emergency_unknown_are_returned(
+    client: TestClient, operational_status, emergency_services
+):
+    payload = {
+        **HOSPITAL_PAYLOAD,
+        "name": f"Status Hospital {operational_status}",
+        "operational_status": operational_status,
+        "emergency_services": emergency_services,
+    }
+    response = client.post(
+        "/api/v1/hospitals", json=payload, headers=_auth_headers(True)
+    )
+
+    assert response.status_code == 201
+    assert response.json()["operational_status"] == operational_status
+    assert response.json()["emergency_services"] is emergency_services
 
 
 def test_create_hospital_duplicate_slug(client: TestClient):
@@ -306,6 +326,7 @@ def test_create_doctor_authorized(client: TestClient):
     assert data["full_name"] == DOCTOR_PAYLOAD["full_name"]
     assert data["slug"] == "dr-ramesh-kumar"
     assert data["verification_status"] == "unverified"
+    assert data["operational_status"] == "unknown"
     assert data["id"] is not None
 
 
@@ -453,7 +474,28 @@ def test_create_lab_authorized(client: TestClient):
     assert data["name"] == LAB_PAYLOAD["name"]
     assert data["slug"] == "raichur-diagnostic-center"
     assert data["verification_status"] == "unverified"
+    assert data["operational_status"] == "unknown"
     assert data["id"] is not None
+
+
+@pytest.mark.parametrize(
+    "operational_status,home_sample_collection",
+    [("unknown", None), ("operational", True), ("not_operational", False)],
+)
+def test_lab_status_and_home_collection_unknown_are_returned(
+    client: TestClient, operational_status, home_sample_collection
+):
+    payload = {
+        **LAB_PAYLOAD,
+        "name": f"Status Lab {operational_status}",
+        "operational_status": operational_status,
+        "home_sample_collection": home_sample_collection,
+    }
+    response = client.post("/api/v1/labs", json=payload, headers=_auth_headers(True))
+
+    assert response.status_code == 201
+    assert response.json()["operational_status"] == operational_status
+    assert response.json()["home_sample_collection"] is home_sample_collection
 
 
 def test_create_lab_duplicate_slug(client: TestClient):

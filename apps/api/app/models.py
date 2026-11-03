@@ -16,9 +16,13 @@ from sqlalchemy import (
     Numeric,
     Boolean,
     DateTime,
+    Date,
+    Time,
+    JSON,
     ForeignKey,
     CheckConstraint,
     Index,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import relationship
@@ -49,7 +53,8 @@ class Hospital(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
     is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
-    emergency_services = Column(Boolean, nullable=False, server_default="false")
+    operational_status = Column(String(30), nullable=False, server_default="unknown", index=True)
+    emergency_services = Column(Boolean, nullable=True)
     operating_hours = Column(Text, nullable=True)
     verification_status = Column(
         String(50), nullable=False, server_default="unverified", index=True
@@ -84,6 +89,7 @@ class Hospital(Base):
         ),
         CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_hospitals_verified_provenance"),
         CheckConstraint("NOT (is_demo AND is_verified)", name="chk_hospitals_demo_unverified"),
+        CheckConstraint("operational_status IN ('unknown', 'operational', 'not_operational')", name="chk_hospitals_operational_status"),
         Index("ix_hospitals_city_state", "city", "state"),
         Index("ix_hospitals_verification_active", "verification_status", "is_active"),
     )
@@ -98,6 +104,7 @@ class Doctor(Base):
     qualifications = Column(Text, nullable=True)
     specializations = Column(String(255), nullable=True, index=True)
     experience_years = Column(Integer, nullable=True)
+    schedule_json = Column(JSON, nullable=True)
     languages = Column(String(255), nullable=True)
     consultation_fee = Column(Numeric(10, 2), nullable=True)
     phone = Column(String(50), nullable=True)
@@ -106,6 +113,7 @@ class Doctor(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
     is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
+    operational_status = Column(String(30), nullable=False, server_default="unknown", index=True)
     hospital_id = Column(
         Integer, ForeignKey("hospitals.id", ondelete="SET NULL"), nullable=True, index=True
     )
@@ -141,6 +149,7 @@ class Doctor(Base):
         ),
         CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_doctors_verified_provenance"),
         CheckConstraint("NOT (is_demo AND is_verified)", name="chk_doctors_demo_unverified"),
+        CheckConstraint("operational_status IN ('unknown', 'operational', 'not_operational')", name="chk_doctors_operational_status"),
         Index("ix_doctors_hospital_id", "hospital_id"),
         Index("ix_doctors_specialization", "specializations"),
         Index("ix_doctors_verification_active", "verification_status", "is_active"),
@@ -164,7 +173,8 @@ class DiagnosticLab(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
     is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
-    home_sample_collection = Column(Boolean, nullable=False, server_default="false")
+    operational_status = Column(String(30), nullable=False, server_default="unknown", index=True)
+    home_sample_collection = Column(Boolean, nullable=True)
     verification_status = Column(
         String(50), nullable=False, server_default="unverified", index=True
     )
@@ -190,6 +200,7 @@ class DiagnosticLab(Base):
         ),
         CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_diagnostic_labs_verified_provenance"),
         CheckConstraint("NOT (is_demo AND is_verified)", name="chk_diagnostic_labs_demo_unverified"),
+        CheckConstraint("operational_status IN ('unknown', 'operational', 'not_operational')", name="chk_diagnostic_labs_operational_status"),
         Index("ix_diagnostic_labs_city_state", "city", "state"),
         Index("ix_diagnostic_labs_verification_active", "verification_status", "is_active"),
     )
@@ -283,6 +294,7 @@ class OPD(Base):
     verified_at = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
     is_demo = Column(Boolean, nullable=False, server_default="false", index=True)
+    operational_status = Column(String(30), nullable=False, server_default="unknown", index=True)
     verification_status = Column(String(50), nullable=False, server_default="unverified", index=True)
     is_active = Column(Boolean, nullable=False, server_default="true", index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -294,6 +306,154 @@ class OPD(Base):
         CheckConstraint("verification_status IN ('unverified', 'pending', 'verified', 'rejected')", name="chk_opds_verification_status"),
         CheckConstraint("NOT is_verified OR (verified_at IS NOT NULL AND source IS NOT NULL AND length(trim(source)) > 0)", name="chk_opds_verified_provenance"),
         CheckConstraint("NOT (is_demo AND is_verified)", name="chk_opds_demo_unverified"),
+        CheckConstraint("operational_status IN ('unknown', 'operational', 'not_operational')", name="chk_opds_operational_status"),
         Index("ix_opds_city_state", "city", "state"),
         Index("ix_opds_verification_active", "verification_status", "is_active"),
     )
+
+
+class User(Base):
+    """Application users supporting patient, provider, and admin roles.
+
+    Provider account creation and provider ownership verification of listings
+    are NOT part of this foundation and are intentionally not implemented here.
+
+    A provider account MAY later be linked to a specific provider listing
+    (hospital, doctor, lab, or OPD) via provider_listing_id / provider_listing_type.
+    No provider account is assumed to own every listing by default.
+    """
+
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), nullable=False, unique=True, index=True)
+    full_name = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=True)
+    hashed_password = Column(String(255), nullable=False)
+    role = Column(
+        String(30), nullable=False, server_default="patient", index=True
+    )
+    is_active = Column(Boolean, nullable=False, server_default="true", index=True)
+    is_verified = Column(Boolean, nullable=False, server_default="false", index=True)
+    # Optional link to a specific provider listing this provider account manages.
+    # Nullable: a provider account is not assumed to own every listing.
+    provider_listing_id = Column(Integer, nullable=True, index=True)
+    provider_listing_type = Column(String(30), nullable=True)
+    provider_doctor_id = Column(Integer, ForeignKey("doctors.id", ondelete="SET NULL"), nullable=True, unique=True, index=True)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    appointments = relationship("Appointment", back_populates="user", cascade="all, delete-orphan")
+    invoices = relationship("Invoice", back_populates="user", cascade="all, delete-orphan")
+    doctor_profile = relationship("Doctor", foreign_keys=[provider_doctor_id])
+
+    __table_args__ = (
+        CheckConstraint(
+            "role IN ('patient', 'provider', 'admin')",
+            name="chk_users_role",
+        ),
+    )
+
+
+class Appointment(Base):
+    """A patient-owned demo booking linked to a directory doctor."""
+
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String(40), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.id", ondelete="RESTRICT"), nullable=False, index=True)
+    appointment_date = Column(Date, nullable=False, index=True)
+    appointment_time = Column(Time, nullable=False)
+    location = Column(Text, nullable=False)
+    city = Column(String(100), nullable=False, index=True)
+    state = Column(String(100), nullable=False)
+    package_id = Column(String(100), nullable=True)
+    package_name = Column(String(255), nullable=True)
+    package_amount = Column(Numeric(10, 2), nullable=False, server_default="0")
+    consultation_fee = Column(Numeric(10, 2), nullable=False, server_default="0")
+    service_charge = Column(Numeric(10, 2), nullable=False, server_default="0")
+    total_amount = Column(Numeric(10, 2), nullable=False, server_default="0")
+    advance_paid = Column(Numeric(10, 2), nullable=False, server_default="0")
+    remaining_balance = Column(Numeric(10, 2), nullable=False, server_default="0")
+    status = Column(String(30), nullable=False, server_default="demo_confirmed", index=True)
+    payment_status = Column(String(30), nullable=False, server_default="demo_unpaid")
+    is_demo = Column(Boolean, nullable=False, server_default="true", index=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user = relationship("User", back_populates="appointments")
+    doctor = relationship("Doctor")
+    invoice = relationship("Invoice", back_populates="appointment", uselist=False, cascade="all, delete-orphan")
+    payments = relationship("PaymentRecord", back_populates="appointment", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        CheckConstraint("status IN ('demo_confirmed', 'pending', 'completed', 'cancelled')", name="chk_appointments_status"),
+        CheckConstraint("payment_status IN ('demo_unpaid', 'demo_recorded', 'paid', 'refunded')", name="chk_appointments_payment_status"),
+        CheckConstraint("package_amount >= 0 AND consultation_fee >= 0 AND service_charge >= 0 AND total_amount >= 0 AND advance_paid >= 0 AND remaining_balance >= 0", name="chk_appointments_amounts_non_negative"),
+        UniqueConstraint("doctor_id", "appointment_date", "appointment_time", name="uq_appointment_doctor_slot"),
+        Index("ix_appointments_doctor_schedule", "doctor_id", "appointment_date", "appointment_time"),
+    )
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    invoice_number = Column(String(40), nullable=False, unique=True, index=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    package_amount = Column(Numeric(10, 2), nullable=False, server_default="0")
+    consultation_fee = Column(Numeric(10, 2), nullable=False, server_default="0")
+    service_charge = Column(Numeric(10, 2), nullable=False, server_default="0")
+    total_amount = Column(Numeric(10, 2), nullable=False, server_default="0")
+    advance_paid = Column(Numeric(10, 2), nullable=False, server_default="0")
+    outstanding_balance = Column(Numeric(10, 2), nullable=False, server_default="0")
+    is_demo = Column(Boolean, nullable=False, server_default="true")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    appointment = relationship("Appointment", back_populates="invoice")
+    user = relationship("User", back_populates="invoices")
+    payments = relationship("PaymentRecord", back_populates="invoice")
+
+
+class PaymentRecord(Base):
+    __tablename__ = "payment_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id", ondelete="CASCADE"), nullable=False, index=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id", ondelete="CASCADE"), nullable=False, index=True)
+    amount = Column(Numeric(10, 2), nullable=False, server_default="0")
+    method_label = Column(String(50), nullable=False, server_default="demo")
+    status = Column(String(30), nullable=False, server_default="demo_not_charged")
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    appointment = relationship("Appointment", back_populates="payments")
+    invoice = relationship("Invoice", back_populates="payments")
+    __table_args__ = (UniqueConstraint("appointment_id", name="uq_payment_appointment"),)
+
+
+class DoctorApplication(Base):
+    __tablename__ = "doctor_applications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    status = Column(String(20), nullable=False, server_default="pending", index=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    applicant = relationship("User", foreign_keys=[user_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+    doctor = relationship("Doctor")
+
+    __table_args__ = (CheckConstraint("status IN ('pending', 'approved', 'rejected')", name="chk_doctor_applications_status"),)

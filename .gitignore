@@ -9,3 +9,21 @@ venv/
 *.log
 .DS_Store
 Thumbs.db
+# Database backups
+backups/
+*.dump
+*.sql
+*.backup
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Local environment files
+.env.local
+.env.production.local
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

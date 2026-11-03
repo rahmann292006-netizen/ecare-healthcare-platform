@@ -1,7 +1,7 @@
 "use strict";
 
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import Link from "next/link";
 
 export interface PackageCardProps {
   id: string;
@@ -16,6 +16,7 @@ export interface PackageCardProps {
 }
 
 export function PackageCard({
+  id,
   title,
   provider,
   providerType,
@@ -57,12 +58,12 @@ export function PackageCard({
           <span className="text-lg font-bold text-ink">{currency} {price}</span>
         </div>
         <div className="mt-4 flex gap-2">
-          <Button variant="primary" size="sm" className="flex-1">
-            Subscribe
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1">
-            Request Booking
-          </Button>
+          <Link href="/find?provider_type=doctor" className="inline-flex flex-1 items-center justify-center rounded-[var(--radius-control)] bg-navy-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700">
+            Explore
+          </Link>
+          <Link href={`/booking?package_id=${encodeURIComponent(id)}`} className="inline-flex flex-1 items-center justify-center rounded-[var(--radius-control)] border border-solid border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors hover:bg-navy-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700">
+            Book Now
+          </Link>
         </div>
         <p className="mt-3 text-xs text-ink-muted">
           Sample data — not real provider data.

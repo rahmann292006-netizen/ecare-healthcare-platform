@@ -1,9 +1,6 @@
 """Pytest configuration and fixtures for eCare API tests."""
 
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 import pytest  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
@@ -20,7 +17,7 @@ from app.database import Base  # noqa: E402
 def db_engine():
     """Create a SQLAlchemy engine connected to the test database.
 
-    Uses DATABASE_URL from environment (.env). No credentials are logged.
+    Uses process-scoped DATABASE_URL. No credentials are logged.
     """
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:

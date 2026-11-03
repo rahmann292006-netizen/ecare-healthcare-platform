@@ -1,76 +1,36 @@
-"use strict";
+"use client";
 
 import { HomeSearch } from "@/components/home-search";
-import { CategoryCard } from "@/components/category-card";
 import { PackageCard } from "@/components/package-card";
 import { DEMO_PACKAGES } from "@/lib/mock-data";
-
-const categories = [
-  {
-    title: "Hospitals",
-    description: "Discover hospitals and healthcare facilities near you.",
-    count: "0",
-    href: "/find?category=hospitals",
-    icon: "H",
-  },
-  {
-    title: "Doctors",
-    description: "Find specialists and general practitioners.",
-    count: "0",
-    href: "/find?category=doctors",
-    icon: "D",
-  },
-  {
-    title: "Diagnostic Labs",
-    description: "Book tests and health screenings.",
-    count: "0",
-    href: "/find?category=labs",
-    icon: "L",
-  },
-  {
-    title: "Health Checkups",
-    description: "Explore preventive health packages.",
-    count: "4",
-    href: "/packages",
-    icon: "+",
-  },
-];
+import { HomeDirectoryHighlights } from "@/components/home-directory-highlights";
+import { FeaturedDoctorsCarousel } from "@/components/featured-doctors-carousel";
+import { BrandBackground } from "@/components/brand-background";
+import { useDemoLocation } from "@/components/location-provider";
 
 export default function Home() {
+  const { locationId } = useDemoLocation();
   return (
     <div className="bg-background text-ink min-h-full">
       {/* Hero */}
-      <section className="px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+      <BrandBackground className="px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <span className="inline-flex items-center gap-2 rounded bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 mb-4">
-              Independent healthcare directory for Raichur
+              Fictional healthcare directory demo
             </span>
             <h1 className="text-4xl sm:text-5xl font-bold text-ink mb-4 leading-tight">
               Your Health, Closer to Home.
             </h1>
-            <p className="text-lg text-ink-muted max-w-2xl mx-auto">
-              Discover hospitals, doctors, specialists, and diagnostic labs in
-              Raichur. Users send appointment requests only — a request is not a
-              confirmed booking.
-            </p>
+            <p className="text-lg text-ink-muted max-w-2xl mx-auto">Explore fictional sample hospitals, doctors, and diagnostic labs. Profiles, schedules, fees, and availability are illustrative and do not represent real providers.</p>
           </div>
 
           <HomeSearch />
         </div>
-      </section>
+      </BrandBackground>
 
-      {/* Category cards */}
-      <section className="px-4 sm:px-6 lg:px-8 py-12">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-2xl font-bold text-ink mb-8">Explore by category</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {categories.map((cat) => (
-              <CategoryCard key={cat.title} {...cat} />
-            ))}
-          </div>
-        </div>
-      </section>
+      <HomeDirectoryHighlights />
+      <FeaturedDoctorsCarousel />
 
       {/* Featured packages */}
       <section className="px-4 sm:px-6 lg:px-8 py-12 bg-navy-50">
@@ -79,12 +39,12 @@ export default function Home() {
             <div>
               <h2 className="text-2xl font-bold text-ink">Featured health packages</h2>
               <p className="text-sm text-ink-muted">
-                Sample packages — not real provider data.
+                Sample packages â€” not real provider data.
               </p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {DEMO_PACKAGES.map((pkg) => (
+            {DEMO_PACKAGES.filter((pkg) => pkg.locationId === locationId).map((pkg) => (
               <PackageCard key={pkg.id} {...pkg} />
             ))}
           </div>
@@ -107,7 +67,7 @@ export default function Home() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 flex shrink-0 rounded bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">3</span>
-                Send an appointment request — a request is not a confirmed booking.
+                Send an appointment request â€” a request is not a confirmed booking.
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 flex shrink-0 rounded bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">4</span>

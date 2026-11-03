@@ -178,6 +178,21 @@ def test_provider_provenance_constraints_and_defaults():
         assert f"chk_{model.__tablename__}_demo_unverified" in checks
 
 
+def test_provider_operational_status_and_unknown_service_values():
+    for model in [Hospital, Doctor, DiagnosticLab, OPD]:
+        column = model.__table__.c.operational_status
+        assert not column.nullable
+        assert str(column.server_default.arg).strip("'") == "unknown"
+        checks = {constraint.name for constraint in model.__table__.constraints
+                  if isinstance(constraint, CheckConstraint)}
+        assert f"chk_{model.__tablename__}_operational_status" in checks
+
+    assert Hospital.__table__.c.emergency_services.nullable
+    assert Hospital.__table__.c.emergency_services.server_default is None
+    assert DiagnosticLab.__table__.c.home_sample_collection.nullable
+    assert DiagnosticLab.__table__.c.home_sample_collection.server_default is None
+
+
 def test_speciality_join_keys_and_opd_hospital_link():
     assert HospitalSpeciality.__table__.primary_key.columns.keys() == ["hospital_id", "speciality_id"]
     assert DoctorSpeciality.__table__.primary_key.columns.keys() == ["doctor_id", "speciality_id"]

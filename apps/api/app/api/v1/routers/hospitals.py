@@ -110,6 +110,7 @@ def create_hospital(
         phone=hospital_in.phone,
         email=hospital_in.email,
         website=hospital_in.website,
+        operational_status=hospital_in.operational_status,
         emergency_services=hospital_in.emergency_services,
         operating_hours=hospital_in.operating_hours,
     )

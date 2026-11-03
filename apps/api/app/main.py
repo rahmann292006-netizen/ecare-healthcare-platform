@@ -1,5 +1,7 @@
+import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 load_dotenv()
@@ -12,6 +14,19 @@ import app.models  # noqa: E402, F401  (registers all models with Base.metadata)
 from app.api.v1.api import api_router  # noqa: E402
 
 app = FastAPI(title="ecare API")
+
+# CORS configuration from environment. Defaults to the local Next.js
+# frontend origin. Never allows all origins in production-like settings.
+_cors_origins_env = os.environ.get("ECARE_CORS_ORIGINS", "http://localhost:3000")
+_cors_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 app.include_router(api_router)
 

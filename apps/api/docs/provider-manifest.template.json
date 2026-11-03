@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "hospitals": [
+    {
+      "name": "PLACEHOLDER ONLY - NOT A REAL HOSPITAL",
+      "slug": "replace-with-source-confirmed-hospital-slug",
+      "description": null,
+      "hospital_type": null,
+      "address": "REPLACE_WITH_SOURCE_CONFIRMED_ADDRESS",
+      "locality": null,
+      "city": "REPLACE_WITH_SOURCE_CONFIRMED_CITY",
+      "state": "REPLACE_WITH_SOURCE_CONFIRMED_STATE",
+      "pincode": null,
+      "latitude": null,
+      "longitude": null,
+      "phone": null,
+      "email": null,
+      "website": null,
+      "operational_status": "unknown",
+      "emergency_services": null,
+      "operating_hours": null,
+      "source": "PLACEHOLDER - replace with the source that supports this record",
+      "source_url": "REPLACE_WITH_OFFICIAL_SOURCE_URL",
+      "verified_at": null,
+      "verification_status": "unverified",
+      "is_verified": false,
+      "is_demo": true,
+      "speciality_slugs": []
+    }
+  ],
+  "doctors": [
+    {
+      "full_name": "PLACEHOLDER ONLY - NOT A REAL DOCTOR",
+      "slug": "replace-with-source-confirmed-doctor-slug",
+      "qualifications": null,
+      "specializations": null,
+      "experience_years": null,
+      "languages": null,
+      "consultation_fee": null,
+      "phone": null,
+      "hospital_slug": null,
+      "source": "PLACEHOLDER - replace with the source that supports this record",
+      "source_url": "REPLACE_WITH_OFFICIAL_SOURCE_URL",
+      "verified_at": null,
+      "verification_status": "unverified",
+      "is_verified": false,
+      "is_demo": true,
+      "operational_status": "unknown",
+      "speciality_slugs": []
+    }
+  ],
+  "labs": [
+    {
+      "name": "PLACEHOLDER ONLY - NOT A REAL DIAGNOSTIC LAB",
+      "slug": "replace-with-source-confirmed-lab-slug",
+      "description": null,
+      "address": "REPLACE_WITH_SOURCE_CONFIRMED_ADDRESS",
+      "locality": null,
+      "city": "REPLACE_WITH_SOURCE_CONFIRMED_CITY",
+      "state": "REPLACE_WITH_SOURCE_CONFIRMED_STATE",
+      "phone": null,
+      "operational_status": "unknown",
+      "home_sample_collection": null,
+      "source": "PLACEHOLDER - replace with the source that supports this record",
+      "source_url": "REPLACE_WITH_OFFICIAL_SOURCE_URL",
+      "verified_at": null,
+      "verification_status": "unverified",
+      "is_verified": false,
+      "is_demo": true
+    }
+  ]
+}

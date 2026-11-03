@@ -7,7 +7,7 @@ Write endpoints require development-mode authorization (see app/auth.py).
 
 from fastapi import APIRouter
 
-from app.api.v1.routers import hospitals, doctors, labs, tests, directory
+from app.api.v1.routers import hospitals, doctors, labs, tests, directory, auth, appointments
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -16,3 +16,5 @@ api_router.include_router(doctors.router)
 api_router.include_router(labs.router)
 api_router.include_router(tests.router)
 api_router.include_router(directory.router)
+api_router.include_router(auth.router)
+api_router.include_router(appointments.router)

@@ -3,7 +3,7 @@
 import { notFound } from "next/navigation";
 import { DEMO_PACKAGES } from "@/lib/mock-data";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const instant = false;
 
@@ -89,12 +89,12 @@ export default async function PackageDetailPage({
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent>
-                <Button variant="primary" className="w-full mb-3">
-                  Subscribe to package
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Request booking
-                </Button>
+                <Link href="/find?provider_type=doctor" className="mb-3 inline-flex w-full items-center justify-center rounded-[var(--radius-control)] bg-navy-900 px-5 py-2.5 text-base font-medium text-white hover:bg-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700">
+                  Explore Doctors
+                </Link>
+                <Link href={`/booking?package_id=${encodeURIComponent(id)}`} className="inline-flex w-full items-center justify-center rounded-[var(--radius-control)] border border-solid border-border bg-background px-5 py-2.5 text-base font-medium hover:bg-navy-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700">
+                  Book Now
+                </Link>
               </CardContent>
               <CardContent className="pt-4">
                 <p className="text-xs text-ink-muted">

@@ -4,10 +4,6 @@ No credentials are printed or logged.
 """
 
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 from tests.database_guard import require_test_database  # noqa: E402
 
 require_test_database()

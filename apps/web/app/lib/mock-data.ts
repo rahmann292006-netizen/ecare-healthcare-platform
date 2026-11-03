@@ -12,6 +12,7 @@
 
 export interface DemoPackage {
   id: string;
+  locationId: string;
   title: string;
   provider: string;
   providerType: "hospital" | "diagnostic_lab";
@@ -49,6 +50,7 @@ export interface DemoNotification {
 export const DEMO_PACKAGES: DemoPackage[] = [
   {
     id: "pkg-1",
+    locationId: "raichur-karnataka",
     title: "Full Body Checkup",
     provider: "City Diagnostic Lab",
     providerType: "diagnostic_lab",
@@ -61,6 +63,7 @@ export const DEMO_PACKAGES: DemoPackage[] = [
   },
   {
     id: "pkg-2",
+    locationId: "bengaluru-karnataka",
     title: "Heart Health Screening",
     provider: "Raichur General Hospital",
     providerType: "hospital",
@@ -73,6 +76,7 @@ export const DEMO_PACKAGES: DemoPackage[] = [
   },
   {
     id: "pkg-3",
+    locationId: "hyderabad-telangana",
     title: "Diabetes Care Package",
     provider: "City Diagnostic Lab",
     providerType: "diagnostic_lab",
@@ -85,6 +89,7 @@ export const DEMO_PACKAGES: DemoPackage[] = [
   },
   {
     id: "pkg-4",
+    locationId: "kalaburagi-karnataka",
     title: "Women's Wellness",
     provider: "Raichur General Hospital",
     providerType: "hospital",

@@ -1,9 +1,14 @@
-"use strict";
+"use client";
 
 import { DEMO_PACKAGES } from "@/lib/mock-data";
 import { PackageCard } from "@/components/package-card";
+import { useDemoLocation } from "@/components/location-provider";
+import { DEMO_LOCATIONS } from "@/lib/locations";
 
 export default function PackagesPage() {
+  const { locationId } = useDemoLocation();
+  const location = DEMO_LOCATIONS.find((item) => item.id === locationId) ?? DEMO_LOCATIONS[0];
+  const packages = DEMO_PACKAGES.filter((pkg) => pkg.locationId === locationId);
   return (
     <section className="px-4 py-8 sm:py-12">
       <div className="max-w-5xl mx-auto">
@@ -11,7 +16,7 @@ export default function PackagesPage() {
           <div>
             <h1 className="text-3xl font-bold text-ink">Health Packages</h1>
             <p className="text-sm text-ink-muted">
-              Preventive health checkup packages and screening offers.
+              Preventive health checkup packages for {location.label}.
             </p>
           </div>
           <span className="inline-flex items-center gap-1 rounded bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700">
@@ -26,12 +31,12 @@ export default function PackagesPage() {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {DEMO_PACKAGES.map((pkg) => (
+          {packages.map((pkg) => (
             <PackageCard key={pkg.id} {...pkg} />
           ))}
         </div>
 
-        {DEMO_PACKAGES.length === 0 && (
+        {packages.length === 0 && (
           <div className="rounded-[var(--radius-card)] border border-solid border-border bg-background p-12 text-center shadow-[var(--shadow-card)]">
             <p className="text-ink-muted">No packages available.</p>
           </div>

@@ -5,10 +5,13 @@ New listings always default to verification_status="unverified" and
 clients cannot set verification_status to "verified" via the API.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, date, time
+from decimal import Decimal
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 import re
+
+OperationalStatus = Literal["unknown", "operational", "not_operational"]
 
 
 def slugify(value: str) -> str:
@@ -46,7 +49,8 @@ class HospitalBase(BaseModel):
     phone: Optional[str] = Field(None, max_length=50, description="Phone number")
     email: Optional[str] = Field(None, max_length=255, description="Email address")
     website: Optional[str] = Field(None, max_length=500, description="Website URL")
-    emergency_services: Optional[bool] = Field(False, description="Emergency services available")
+    operational_status: OperationalStatus = Field("unknown", description="Provider operational status")
+    emergency_services: Optional[bool] = Field(None, description="True/false when known; null when unknown")
     operating_hours: Optional[str] = Field(None, description="Operating hours text")
 
     @field_validator("slug", mode="before")
@@ -99,12 +103,19 @@ class HospitalUpdate(BaseModel):
     email: Optional[str] = Field(None, max_length=255)
     website: Optional[str] = Field(None, max_length=500)
     emergency_services: Optional[bool] = None
+    operational_status: Optional[OperationalStatus] = None
     operating_hours: Optional[str] = None
 
     @model_validator(mode="after")
     def _regenerate_slug_if_name_changed(self):
         if self.name is not None and self.slug is None:
             self.slug = slugify(self.name)
+        return self
+
+    @model_validator(mode="after")
+    def _reject_null_operational_status(self):
+        if "operational_status" in self.model_fields_set and self.operational_status is None:
+            raise ValueError("operational_status cannot be null")
         return self
 
 
@@ -149,6 +160,7 @@ class DoctorBase(BaseModel):
     consultation_fee: Optional[float] = Field(None, ge=0, description="Consultation fee in INR")
     phone: Optional[str] = Field(None, max_length=50)
     hospital_id: Optional[int] = Field(None, description="Associated hospital ID")
+    operational_status: OperationalStatus = Field("unknown", description="Provider operational status")
 
     @field_validator("slug", mode="before")
     @classmethod
@@ -181,11 +193,18 @@ class DoctorUpdate(BaseModel):
     consultation_fee: Optional[float] = Field(None, ge=0)
     phone: Optional[str] = Field(None, max_length=50)
     hospital_id: Optional[int] = None
+    operational_status: Optional[OperationalStatus] = None
 
     @model_validator(mode="after")
     def _regenerate_slug_if_name_changed(self):
         if self.full_name is not None and self.slug is None:
             self.slug = slugify(self.full_name)
+        return self
+
+    @model_validator(mode="after")
+    def _reject_null_operational_status(self):
+        if "operational_status" in self.model_fields_set and self.operational_status is None:
+            raise ValueError("operational_status cannot be null")
         return self
 
 
@@ -225,7 +244,8 @@ class LabBase(BaseModel):
     city: Optional[str] = Field("Raichur", max_length=100)
     state: Optional[str] = Field("Karnataka", max_length=100)
     phone: Optional[str] = Field(None, max_length=50)
-    home_sample_collection: Optional[bool] = Field(False)
+    operational_status: OperationalStatus = Field("unknown", description="Provider operational status")
+    home_sample_collection: Optional[bool] = Field(None, description="True/false when known; null when unknown")
 
     @field_validator("slug", mode="before")
     @classmethod
@@ -258,11 +278,18 @@ class LabUpdate(BaseModel):
     state: Optional[str] = Field(None, max_length=100)
     phone: Optional[str] = Field(None, max_length=50)
     home_sample_collection: Optional[bool] = None
+    operational_status: Optional[OperationalStatus] = None
 
     @model_validator(mode="after")
     def _regenerate_slug_if_name_changed(self):
         if self.name is not None and self.slug is None:
             self.slug = slugify(self.name)
+        return self
+
+    @model_validator(mode="after")
+    def _reject_null_operational_status(self):
+        if "operational_status" in self.model_fields_set and self.operational_status is None:
+            raise ValueError("operational_status cannot be null")
         return self
 
 
@@ -344,6 +371,11 @@ class ProviderDirectoryItem(BaseModel):
     hospital_type: Optional[str] = None
     opd_type: Optional[str] = None
     hospital_id: Optional[int] = None
+    hospital_name: Optional[str] = None
+    qualifications: Optional[str] = None
+    experience_years: Optional[int] = None
+    consultation_fee: Optional[float] = None
+    schedule: Optional[dict] = None
     specialities: list[SpecialityResponse] = Field(default_factory=list)
     source: Optional[str] = None
     source_url: Optional[str] = None
@@ -351,6 +383,9 @@ class ProviderDirectoryItem(BaseModel):
     is_verified: bool = False
     is_demo: bool = False
     verification_status: str = "unverified"
+    operational_status: OperationalStatus = "unknown"
+    emergency_services: Optional[bool] = None
+    home_sample_collection: Optional[bool] = None
 
 
 class ProviderDirectoryResponse(BaseModel):
@@ -358,3 +393,176 @@ class ProviderDirectoryResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+# ---------------------------------------------------------------------------
+# Authentication schemas
+# ---------------------------------------------------------------------------
+
+UserRole = Literal["patient", "provider", "admin"]
+
+
+class UserBase(BaseModel):
+    email: str = Field(..., max_length=255, description="User email address")
+    full_name: str = Field(..., min_length=1, max_length=255, description="Full name")
+    role: UserRole = Field("patient", description="User role")
+    phone: Optional[str] = Field(None, max_length=50)
+
+
+class UserCreate(BaseModel):
+    """Request schema for public user registration.
+
+    The role field is intentionally excluded: public registration always
+    creates a patient account. Clients cannot set provider or admin roles.
+    """
+
+    email: str = Field(..., max_length=255, description="User email address")
+    full_name: str = Field(..., min_length=1, max_length=255, description="Full name")
+    phone: Optional[str] = Field(None, max_length=50)
+    password: str = Field(..., min_length=8, max_length=128, description="Password")
+
+
+class UserProvisionCreate(BaseModel):
+    """Request schema for admin-only provisioning of user accounts.
+
+    Only trusted administrators may create provider or admin accounts.
+    Public registration cannot use this schema.
+    """
+
+    email: str = Field(..., max_length=255, description="User email address")
+    full_name: str = Field(..., min_length=1, max_length=255, description="Full name")
+    password: str = Field(..., min_length=8, max_length=128, description="Password")
+    role: UserRole = Field("patient", description="User role (patient/provider/admin)")
+
+
+class UserRead(UserBase):
+    """Response schema for a user. Never includes the hashed password."""
+
+    id: int
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    phone: Optional[str] = Field(None, max_length=50)
+
+
+class UserChangePassword(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=128)
+
+
+class DoctorApplicationCreate(BaseModel):
+    doctor_id: int = Field(..., ge=1, description="Existing doctor directory listing to link after approval")
+
+
+class DoctorApplicationRead(BaseModel):
+    id: int
+    user_id: int
+    doctor_id: int
+    status: str
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+    applicant_name: Optional[str] = None
+    applicant_email: Optional[str] = None
+    doctor_name: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    """Request schema for user login."""
+
+    email: str = Field(..., max_length=255, description="User email address")
+    password: str = Field(..., description="Password")
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+class AppointmentCreate(BaseModel):
+    doctor_id: int = Field(..., ge=1)
+    appointment_date: date
+    appointment_time: time
+    location_id: Optional[str] = Field(None, max_length=100)
+    package_id: Optional[str] = Field(None, max_length=100)
+    package_name: Optional[str] = Field(None, max_length=255)
+    package_amount: Decimal = Field(Decimal("0"), ge=0, le=1000000)
+    payment_method: Literal["demo-card", "demo-upi", "demo-cash"] = "demo-card"
+
+
+class PaymentRead(BaseModel):
+    id: int
+    amount: Decimal
+    method_label: str
+    status: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class InvoiceRead(BaseModel):
+    invoice_number: str
+    appointment_id: int
+    package_amount: Decimal
+    consultation_fee: Decimal
+    service_charge: Decimal
+    total_amount: Decimal
+    advance_paid: Decimal
+    outstanding_balance: Decimal
+    is_demo: bool
+    created_at: datetime
+    payments: list[PaymentRead] = Field(default_factory=list)
+    patient_name: Optional[str] = None
+    doctor_name: Optional[str] = None
+    appointment_date: Optional[date] = None
+    appointment_time: Optional[time] = None
+    location: Optional[str] = None
+    payment_method: Optional[str] = None
+    payment_status: Optional[str] = None
+
+
+class AppointmentRead(BaseModel):
+    id: int
+    reference: str
+    user_id: int
+    doctor_id: int
+    doctor_name: str
+    doctor_qualification: Optional[str] = None
+    doctor_speciality: Optional[str] = None
+    hospital_id: Optional[int] = None
+    hospital_name: Optional[str] = None
+    appointment_date: date
+    appointment_time: time
+    location: str
+    city: str
+    state: str
+    package_id: Optional[str] = None
+    package_name: Optional[str] = None
+    package_amount: Decimal
+    consultation_fee: Decimal
+    service_charge: Decimal
+    total_amount: Decimal
+    advance_paid: Decimal
+    remaining_balance: Decimal
+    status: str
+    payment_status: str
+    is_demo: bool
+    created_at: datetime
+
+
+class AppointmentDetail(AppointmentRead):
+    invoice: InvoiceRead
+
+
+class DoctorScheduleUpdate(BaseModel):
+    schedule: dict

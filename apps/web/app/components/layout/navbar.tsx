@@ -1,119 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { BrandLogo } from "@/components/brand-logo";
+import { useAuth } from "@/components/auth-provider";
 
-const links = [
-  { href: "/", label: "Home" },
-  { href: "/find", label: "Find Healthcare" },
-  { href: "/packages", label: "Health Packages" },
-  { href: "/dashboard", label: "My Dashboard" },
-  { href: "/reminders", label: "Reminders" },
-  { href: "/notifications", label: "Notifications" },
-  { href: "/provider", label: "Provider Dashboard" },
+const publicLinks = [
+  { href: "/", label: "Home" }, { href: "/find", label: "Find Healthcare" },
+  { href: "/specialities", label: "Specialities" }, { href: "/packages", label: "Health Packages" },
+  { href: "/join-doctor", label: "Join as Doctor" },
 ];
 
 export function Navbar() {
-  return (
-    <Suspense fallback={<NavbarContent pathname={null} />}>
-      <NavbarWithPathname />
-    </Suspense>
-  );
-}
-
-function NavbarWithPathname() {
   const pathname = usePathname();
-  return <NavbarContent pathname={pathname} />;
-}
+  const router = useRouter();
+  const { user, loading, signOut } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const roleLinks = user?.role === "admin"
+    ? [{ href: "/admin", label: "Admin Panel" }]
+    : user?.role === "provider"
+      ? [{ href: "/provider", label: "Doctor Dashboard" }, { href: "/provider#schedule", label: "My Schedule" }, { href: "/profile", label: "My Profile" }]
+      : user
+        ? [{ href: "/dashboard", label: "Dashboard" }, { href: "/dashboard#appointments", label: "My Appointments" }, { href: "/profile", label: "My Profile" }]
+        : [];
 
-function NavbarContent({ pathname }: { pathname: string | null }) {
-  return (
-    <nav
-      className="sticky top-0 z-20 border-b border-solid border-border bg-background/95 backdrop-blur"
-      aria-label="Main navigation"
-    >
-      <div className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between py-3 sm:py-4 gap-4">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-xl font-bold text-ink"
-            aria-label="eCare home"
-          >
-            <span className="rounded bg-teal-700 px-2 py-0.5 text-white font-bold text-sm">
-              eCare
-            </span>
-          </Link>
+  async function handleLogout() {
+    await signOut();
+    setMenuOpen(false);
+    router.push("/");
+  }
 
-          <div className="hidden md:flex items-center gap-1">
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-4 py-2 rounded-[var(--radius-control)] text-sm font-medium transition-colors ${
-                  pathname === link.href
-                    ? "bg-navy-50 text-navy-900"
-                    : "text-ink-muted hover:text-ink hover:bg-navy-50"
-                }`}
-                aria-current={pathname === link.href ? "page" : undefined}
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <ButtonAsLink href="/find" variant="secondary">
-              Find a Provider
-            </ButtonAsLink>
-            <ButtonAsLink href="/dashboard" variant="primary">
-              My Dashboard
-            </ButtonAsLink>
-          </div>
-        </div>
-
-        {/* Mobile menu */}
-        <div className="md:hidden flex items-center justify-between py-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-xl font-bold text-ink"
-          >
-            <span className="rounded bg-teal-700 px-2 py-0.5 text-white font-bold text-sm">
-              eCare
-            </span>
-          </Link>
-          <button
-            className="rounded-[var(--radius-control)] border border-solid border-border bg-background px-3 py-2 text-ink"
-            aria-label="Open menu"
-            aria-expanded="false"
-          >
-            Menu
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-function ButtonAsLink({
-  href,
-  variant,
-  children,
-}: {
-  href: string;
-  variant: "primary" | "secondary";
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`inline-flex items-center justify-center rounded-[var(--radius-control)] text-sm font-medium transition-colors ${
-        variant === "primary"
-          ? "bg-navy-900 text-white px-4 py-2 hover:bg-navy-800"
-          : "bg-teal-700 text-white px-4 py-2 hover:bg-teal-600"
-      }`}
-    >
-      {children}
-    </Link>
-  );
+  const links = [...publicLinks, ...roleLinks];
+  return <nav className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur" aria-label="Main navigation">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6"><div className="flex min-h-16 items-center justify-between gap-4">
+      <BrandLogo />
+      <div className="hidden items-center gap-1 lg:flex">{links.map((item) => <Link key={item.href} href={item.href} aria-current={pathname === item.href ? "page" : undefined} className={`rounded-[var(--radius-control)] px-3 py-2 text-sm font-medium ${pathname === item.href ? "bg-navy-50 text-navy-900" : "text-ink-muted hover:bg-navy-50 hover:text-ink"}`}>{item.label}</Link>)}</div>
+      <div className="hidden items-center gap-2 sm:flex">{loading ? <span className="text-xs text-ink-muted">Checking session…</span> : user ? <><span className="max-w-36 truncate text-sm text-ink-muted">{user.full_name}</span><button type="button" onClick={() => void handleLogout()} className="rounded-[var(--radius-control)] bg-navy-900 px-4 py-2 text-sm font-medium text-white hover:bg-navy-800">Logout</button></> : <><Link href="/login" className="rounded-[var(--radius-control)] px-3 py-2 text-sm font-medium text-ink hover:bg-navy-50">Login</Link><Link href="/register" className="rounded-[var(--radius-control)] bg-navy-900 px-4 py-2 text-sm font-medium text-white hover:bg-navy-800">Create Account</Link></>}</div>
+      <button type="button" className="rounded-[var(--radius-control)] border border-border px-3 py-2 text-sm text-ink lg:hidden" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => setMenuOpen((value) => !value)}>{menuOpen ? "Close" : "Menu"}</button>
+    </div>
+    {menuOpen && <div id="mobile-navigation" className="border-t border-border py-3 lg:hidden"><div className="grid gap-1">{links.map((item) => <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="rounded px-3 py-2 text-sm font-medium text-ink hover:bg-navy-50">{item.label}</Link>)}{!loading && (user ? <button type="button" onClick={() => void handleLogout()} className="rounded px-3 py-2 text-left text-sm font-medium text-danger">Logout</button> : <><Link href="/login" onClick={() => setMenuOpen(false)} className="rounded px-3 py-2 text-sm font-medium text-ink">Login</Link><Link href="/register" onClick={() => setMenuOpen(false)} className="rounded px-3 py-2 text-sm font-medium text-ink">Create Account</Link></>)}</div></div>}
+    </div>
+  </nav>;
 }

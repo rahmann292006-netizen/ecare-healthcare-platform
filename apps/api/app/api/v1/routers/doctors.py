@@ -107,6 +107,7 @@ def create_doctor(
         consultation_fee=doctor_in.consultation_fee,
         phone=doctor_in.phone,
         hospital_id=doctor_in.hospital_id,
+        operational_status=doctor_in.operational_status,
     )
     db.add(doctor)
     try:
