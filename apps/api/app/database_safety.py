@@ -40,6 +40,17 @@ def require_test_target(database_url: str | None, environment: str | None) -> st
     return name
 
 
+def require_alembic_test_target(
+    database_url: str | None, environment: str | None
+) -> str:
+    """Require Alembic to target an explicitly marked loopback test database."""
+    if environment != "test":
+        raise ValueError(
+            "Alembic requires ECARE_DATABASE_ENV to be exactly 'test'"
+        )
+    return require_test_target(database_url, environment)
+
+
 def require_import_target(
     database_url: str | None,
     environment: str | None,

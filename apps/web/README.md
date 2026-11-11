@@ -29,6 +29,10 @@ To learn more about Next.js, take a look at the following resources:
 
 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
+## eCare API configuration
+
+The linked Vercel project uses `apps/web` as its root directory. Configure `NEXT_PUBLIC_API_URL` in the Vercel project environment only after an actual backend URL has been provisioned and verified. Do not substitute a guessed URL. The backend deployment and production migration procedure are not yet ready; see the API deployment checklist in [`../api/README.md`](../api/README.md).
+
 ## Deploy on Vercel
 
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.

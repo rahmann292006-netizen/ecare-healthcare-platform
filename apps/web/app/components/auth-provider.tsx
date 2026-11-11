@@ -10,12 +10,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserRead | null>(null);
   const [loading, setLoading] = useState(true);
   const refreshUser = useCallback(async () => {
-    if (!hasSessionToken()) { setUser(null); setLoading(false); return null; }
-    try { const current = await getMe(); setUser(current); return current; }
-    catch { await logout(); setUser(null); return null; }
-    finally { setLoading(false); }
+    if (!hasSessionToken()) return null;
+    try { return await getMe(); }
+    catch (error) {
+      if (error instanceof Error && error.message.startsWith("API 401")) {
+        await logout();
+      }
+      return null;
+    }
   }, []);
-  useEffect(() => { void refreshUser(); }, [refreshUser]);
+  useEffect(() => {
+    let active = true;
+    void Promise.resolve()
+      .then(refreshUser)
+      .then((current) => {
+        if (!active) return;
+        setUser(current);
+        setLoading(false);
+      });
+    return () => { active = false; };
+  }, [refreshUser]);
   const signIn = useCallback(async (input: UserLoginRequest) => { await login(input); const current = await getMe(); setUser(current); setLoading(false); return current; }, []);
   const signOut = useCallback(async () => { await logout(); setUser(null); }, []);
   const value = useMemo(() => ({ user, loading, signIn, signOut, refreshUser }), [user, loading, signIn, signOut, refreshUser]);

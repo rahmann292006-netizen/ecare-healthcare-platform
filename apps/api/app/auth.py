@@ -5,8 +5,8 @@ This module provides:
 - JWT access token creation and verification.
 - Current-user dependency for authenticated endpoints.
 - Role-based authorization dependencies (patient, provider, admin).
-- The legacy development-only write guard (require_write_access) is kept
-  separate and is NOT production authentication.
+- A development-header shortcut is limited to explicit development and test
+  environments; production directory writes require an active administrator.
 
 Security notes:
 - Secrets (SECRET_KEY) must come from environment variables only.
@@ -94,38 +94,6 @@ def decode_access_token(token: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
-# Legacy development-only write guard (kept separate from real auth)
-# ---------------------------------------------------------------------------
-
-def require_write_access(
-    x_ecare_dev_mode: Optional[str] = Header(None, alias="X-Ecare-Dev-Mode"),
-) -> None:
-    """Dependency that grants write access only in development mode.
-
-    Access is granted when either:
-    - The ECARE_DEV_MODE environment variable is set to "true", or
-    - The X-Ecare-Dev-Mode: true header is sent with the request.
-
-    Otherwise, a 403 Forbidden response is returned.
-
-    This is intentionally strict: by default, all write operations are
-    denied. Public read-only endpoints are not protected by this dependency.
-    """
-    dev_mode = os.environ.get("ECARE_DEV_MODE", "false").lower() == "true"
-    header_dev_mode = (x_ecare_dev_mode or "").lower() == "true"
-
-    if not dev_mode and not header_dev_mode:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=(
-                "Write operations are disabled. "
-                "Set ECARE_DEV_MODE=true or send X-Ecare-Dev-Mode: true "
-                "for development access only."
-            ),
-        )
-
-
-# ---------------------------------------------------------------------------
 # Current-user dependency (real authentication)
 # ---------------------------------------------------------------------------
 
@@ -155,6 +123,65 @@ def get_current_user_email(
     return email
 
 
+def get_optional_current_user_email(
+    authorization: Optional[str] = Header(None, alias="Authorization"),
+) -> Optional[str]:
+    """Return a valid token subject when supplied, without requiring login."""
+    if authorization is None:
+        return None
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    email = decode_access_token(authorization[len("Bearer "):])
+    if email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return email
+
+
+# ---------------------------------------------------------------------------
+# Directory write authorization
+# ---------------------------------------------------------------------------
+
+def require_write_access(
+    x_ecare_dev_mode: Optional[str] = Header(None, alias="X-Ecare-Dev-Mode"),
+    current_user_email: Optional[str] = Depends(get_optional_current_user_email),
+    db: Session = Depends(get_db),
+) -> None:
+    """Allow explicit local demo writes or authenticated administrators."""
+    environment = os.environ.get("ECARE_ENVIRONMENT", "production").casefold()
+    dev_mode = os.environ.get("ECARE_DEV_MODE", "false").casefold() == "true"
+    header_dev_mode = (x_ecare_dev_mode or "").casefold() == "true"
+    if environment in {"development", "test"} and dev_mode and header_dev_mode:
+        return
+
+    if current_user_email is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Directory writes require an administrator account.",
+        )
+
+    from app.models import User
+
+    user = db.query(User).filter(User.email == current_user_email).first()
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is unavailable",
+        )
+    if user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient role",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Role-based authorization dependencies
 # ---------------------------------------------------------------------------
@@ -179,10 +206,10 @@ def require_role(allowed_roles: tuple[str, ...]):
         from app.models import User
 
         user = db.query(User).filter(User.email == current_user_email).first()
-        if user is None:
+        if user is None or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
+                detail="Account is unavailable",
             )
         if user.role not in allowed_roles:
             raise HTTPException(
@@ -195,6 +222,6 @@ def require_role(allowed_roles: tuple[str, ...]):
 
 
 # Convenience aliases
-require_patient = require_role(("patient", "provider", "admin"))
+require_patient = require_role(("patient",))
 require_provider = require_role(("provider", "admin"))
 require_admin = require_role(("admin",))

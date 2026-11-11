@@ -6,7 +6,13 @@ import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { getProvider, type ProviderDirectoryItem, type ProviderType } from "@/lib/api";
+import {
+  getProvider,
+  hasBookableDoctorSchedule,
+  type DoctorSchedule,
+  type ProviderDirectoryItem,
+  type ProviderType,
+} from "@/lib/api";
 import { getDoctorHospital, getFictionalProvider, type FictionalProvider } from "@/lib/fictional-directory";
 
 const providerLabels: Record<ProviderType, string> = {
@@ -36,35 +42,34 @@ function ProviderDetail() {
     !["hospital", "doctor", "lab", "opd"].includes(providerType) ||
     !Number.isInteger(id) ||
     id < 1;
-  const [provider, setProvider] = useState<ProviderDirectoryItem | FictionalProvider | null>(null);
-  const [loading, setLoading] = useState(!invalidParams);
-  const [error, setError] = useState(false);
+  const requestKey = `${providerType}:${id}`;
+  const fictionalProvider = invalidParams ? null : getFictionalProvider(providerType, id);
+  const [apiResult, setApiResult] = useState<{
+    key: string;
+    provider: ProviderDirectoryItem | null;
+    error: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (invalidParams) return;
-    const fictional = getFictionalProvider(providerType, id);
-    if (fictional) {
-      setProvider(fictional);
-      setLoading(false);
-      setError(false);
-      return;
-    }
     let active = true;
     getProvider(providerType, id)
       .then((result) => {
-        if (active) setProvider(result);
+        if (active) setApiResult({ key: requestKey, provider: result, error: false });
       })
       .catch(() => {
-        if (active) setError(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
+        if (active) setApiResult({ key: requestKey, provider: null, error: true });
       });
 
     return () => {
       active = false;
     };
-  }, [id, invalidParams, params.id, params.providerType, providerType]);
+  }, [id, invalidParams, fictionalProvider, params.id, params.providerType, providerType, requestKey]);
+
+  const liveProvider = apiResult?.key === requestKey ? apiResult.provider : null;
+  const provider = liveProvider ?? fictionalProvider;
+  const loading = !invalidParams && apiResult?.key !== requestKey;
+  const error = apiResult?.key === requestKey && apiResult.error && !fictionalProvider;
 
   return (
     <section className="px-4 py-8 sm:py-12">
@@ -107,8 +112,49 @@ function ProviderDetail() {
                 ? (provider as FictionalProvider).biography
                 : available(provider.description)}
             </p>
+            {provider.provider_type === "doctor" && (
+              <div className="mt-4">
+                {liveProvider?.provider_type === "doctor" &&
+                hasBookableDoctorSchedule(liveProvider.schedule) &&
+                liveProvider.consultation_fee != null &&
+                liveProvider.hospital_id &&
+                liveProvider.hospital_name &&
+                liveProvider.city &&
+                liveProvider.state ? (
+                  <Link
+                    href={`/booking?doctor_id=${liveProvider.id}`}
+                    className="inline-flex rounded-[var(--radius-control)] bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700"
+                  >
+                    Book Appointment
+                  </Link>
+                ) : (
+                  <p role="status" className="text-sm text-ink-muted">
+                    Currently unavailable for online appointment booking.
+                  </p>
+                )}
+              </div>
+            )}
 
-            {provider.provider_type === "doctor" && (() => {
+            {liveProvider?.provider_type === "doctor" && liveProvider.is_demo && (
+              <section className="mt-6 rounded-[var(--radius-card)] bg-navy-50 p-4">
+                <h2 className="text-lg font-semibold text-ink">Doctor profile</h2>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                  <Detail label="Qualification (fictional)" value={liveProvider.qualifications} />
+                  <Detail label="Experience (fictional)" value={liveProvider.experience_years != null ? `${liveProvider.experience_years} years` : null} />
+                  <Detail label="Hospital association" value={liveProvider.hospital_name} />
+                  <Detail label="Sample consultation fee" value={liveProvider.consultation_fee != null ? `₹${liveProvider.consultation_fee}` : null} />
+                  <Detail label="Fictional contact email" value={liveProvider.email} />
+                  <Detail label="Fictional contact phone" value={liveProvider.phone} />
+                </dl>
+                {liveProvider.schedule && (
+                  <DoctorScheduleDisplay
+                    schedule={liveProvider.schedule}
+                    verified={liveProvider.is_verified}
+                  />
+                )}
+              </section>
+            )}
+            {!liveProvider && provider.provider_type === "doctor" && provider.is_demo && (() => {
               const fictional = provider as FictionalProvider;
               const hospital = getDoctorHospital(fictional);
               return <section className="mt-6 rounded-[var(--radius-card)] bg-navy-50 p-4">
@@ -129,6 +175,23 @@ function ProviderDetail() {
                 })}</ul><p className="mt-3 text-xs text-ink-muted">Appointments are {fictional.schedule.durationMinutes} minutes. Sunday is unavailable.</p></div>}
               </section>;
             })()}
+            {provider.provider_type === "doctor" && !provider.is_demo && (
+              <section className="mt-6 rounded-[var(--radius-card)] bg-navy-50 p-4">
+                <h2 className="text-lg font-semibold text-ink">Doctor profile</h2>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
+                  <Detail label="Qualifications" value={provider.qualifications} />
+                  <Detail label="Experience" value={provider.experience_years != null ? `${provider.experience_years} years` : null} />
+                  <Detail label="Hospital association" value={provider.hospital_name} />
+                  <Detail label="Consultation fee" value={provider.consultation_fee != null ? `₹${provider.consultation_fee}` : null} />
+                </dl>
+                {provider.schedule && (
+                  <DoctorScheduleDisplay
+                    schedule={provider.schedule}
+                    verified={provider.is_verified}
+                  />
+                )}
+              </section>
+            )}
 
             <dl className="mt-8 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
               <Detail label="Address" value={provider.address} />
@@ -138,6 +201,19 @@ function ProviderDetail() {
               <Detail label={provider.is_demo ? "Fictional contact phone" : "Phone"} value={provider.phone} />
               <Detail label={provider.is_demo ? "Fictional contact email" : "Email"} value={provider.email} />
               <Detail label="Website" value={provider.website} />
+              <Detail label="Operating hours" value={provider.operating_hours} />
+              <Detail
+                label="Operational status"
+                value={provider.operational_status?.replaceAll("_", " ")}
+              />
+              <Detail
+                label="Emergency services"
+                value={provider.emergency_services == null ? null : provider.emergency_services ? "Reported available" : "Reported unavailable"}
+              />
+              <Detail
+                label="Home sample collection"
+                value={provider.home_sample_collection == null ? null : provider.home_sample_collection ? "Reported available" : "Reported unavailable"}
+              />
               <Detail
                 label={provider.provider_type === "opd" ? "OPD type" : "Provider type details"}
                 value={provider.opd_type || provider.hospital_type}
@@ -191,6 +267,51 @@ function Detail({ label, value }: { label: string; value: string | null | undefi
         {label}
       </dt>
       <dd className="mt-1 break-words text-sm text-ink">{available(value)}</dd>
+    </div>
+  );
+}
+
+function DoctorScheduleDisplay({
+  schedule,
+  verified,
+}: {
+  schedule: DoctorSchedule;
+  verified: boolean;
+}) {
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const rows = weekdays.map((day, index) => ({
+    day,
+    duty: schedule.governmentDuty?.[String(index)],
+    opd: schedule.privateOpd?.[String(index)],
+  })).filter((row) => row.duty || row.opd);
+
+  return (
+    <div className="mt-4 border-t border-border pt-4">
+      <h3 className="font-semibold text-ink">
+        {verified ? "Provider-supplied OPD schedule" : "Unverified API schedule"}
+      </h3>
+      {!verified && (
+        <p className="mt-1 text-xs text-ink-muted">
+          This schedule has not been independently verified. Confirm it with the provider.
+        </p>
+      )}
+      {rows.length ? (
+        <ul className="mt-3 space-y-2 text-sm">
+          {rows.map(({ day, duty, opd }) => (
+            <li key={day}>
+              <strong>{day}:</strong>{" "}
+              {duty ? `Government duty ${duty.start}–${duty.end} at ${duty.location}` : ""}
+              {duty && opd ? " · " : ""}
+              {opd ? `Private OPD ${opd.start}–${opd.end} at ${opd.location}` : ""}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-ink-muted">No OPD hours supplied.</p>
+      )}
+      <p className="mt-3 text-xs text-ink-muted">
+        Appointment duration: {schedule.durationMinutes} minutes.
+      </p>
     </div>
   );
 }

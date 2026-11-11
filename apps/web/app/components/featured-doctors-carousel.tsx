@@ -7,18 +7,19 @@ import { DoctorAvatar } from "@/components/doctor-avatar";
 import { useDemoLocation } from "@/components/location-provider";
 import { FICTIONAL_DOCTORS, getDoctorHospital, getDoctorSlots } from "@/lib/fictional-directory";
 import { DEMO_LOCATIONS } from "@/lib/locations";
+import { useCurrentTime } from "@/lib/use-current-time";
 
 export function FeaturedDoctorsCarousel() {
   const { locationId } = useDemoLocation();
   const track = useRef<HTMLDivElement>(null);
   const [paused, setPaused] = useState(false);
-  const [nextSlots, setNextSlots] = useState<Record<number, { date: string; time: string } | null>>({});
   const doctors = useMemo(() => FICTIONAL_DOCTORS.filter((doctor) => doctor.locationId === locationId).slice(0, 5), [locationId]);
   const location = DEMO_LOCATIONS.find((item) => item.id === locationId) ?? DEMO_LOCATIONS[0];
+  const nowTimestamp = useCurrentTime();
 
-  useEffect(() => {
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const nextSlots = useMemo(() => {
+    if (nowTimestamp === 0) return {};
+    const now = new Date(nowTimestamp);
     const timeNow = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     const next: Record<number, { date: string; time: string } | null> = {};
     for (const doctor of doctors) {
@@ -31,8 +32,8 @@ export function FeaturedDoctorsCarousel() {
         if (slot) { next[doctor.id] = { date: dateKey, time: slot.time }; break; }
       }
     }
-    setNextSlots(next);
-  }, [doctors]);
+    return next;
+  }, [doctors, nowTimestamp]);
 
   useEffect(() => {
     if (paused || doctors.length < 2 || !track.current) return;

@@ -15,6 +15,20 @@ load_dotenv()
 # ensure the app package is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+from app.database_safety import require_alembic_test_target  # noqa: E402
+
+try:
+    database_url = os.environ.get("DATABASE_URL")
+    require_alembic_test_target(
+        database_url,
+        os.environ.get("ECARE_DATABASE_ENV"),
+    )
+except ValueError:
+    raise RuntimeError(
+        "Alembic is restricted to a PostgreSQL _test database on a loopback "
+        "host with ECARE_DATABASE_ENV=test. Check the database configuration."
+    ) from None
+
 from app.database import Base  # noqa: E402
 import app.models  # noqa: E402, F401  (registers all models with Base.metadata)
 
@@ -26,13 +40,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override the sqlalchemy.url from the DATABASE_URL environment variable
-database_url = os.environ.get("DATABASE_URL")
-if database_url:
-    config.set_main_option(
-        "sqlalchemy.url",
-        database_url.replace("%", "%%"),
-    )
+# Override the sqlalchemy.url from the validated DATABASE_URL environment variable
+config.set_main_option(
+    "sqlalchemy.url",
+    database_url.replace("%", "%%"),
+)
 
 target_metadata = Base.metadata
 

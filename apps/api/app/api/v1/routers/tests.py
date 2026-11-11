@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import DiagnosticTest
+from app.models import DiagnosticLab, DiagnosticTest
 from app.schemas import (
     TestCreate,
     TestUpdate,
@@ -29,7 +29,15 @@ router = APIRouter(prefix="/tests", tags=["tests"])
 @router.get("/{test_id}", response_model=TestResponse)
 def get_test(test_id: int, db: Session = Depends(get_db)):
     """Get a single diagnostic test by ID."""
-    test = db.query(DiagnosticTest).filter(DiagnosticTest.id == test_id).first()
+    test = (
+        db.query(DiagnosticTest)
+        .join(DiagnosticLab)
+        .filter(
+            DiagnosticTest.id == test_id,
+            DiagnosticLab.is_active.is_(True),
+        )
+        .first()
+    )
     if not test:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Diagnostic test not found")
     return test

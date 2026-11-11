@@ -59,7 +59,7 @@ def list_hospitals(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
     """List hospitals with optional filters and pagination."""
-    query = db.query(Hospital)
+    query = db.query(Hospital).filter(Hospital.is_active.is_(True))
     query = _apply_hospital_filters(
         query, search, locality, hospital_type,
         verification_status, emergency_services,
@@ -72,7 +72,9 @@ def list_hospitals(
 @router.get("/{hospital_id}", response_model=HospitalResponse)
 def get_hospital(hospital_id: int, db: Session = Depends(get_db)):
     """Get a single hospital by ID."""
-    hospital = db.query(Hospital).filter(Hospital.id == hospital_id).first()
+    hospital = db.query(Hospital).filter(
+        Hospital.id == hospital_id, Hospital.is_active.is_(True)
+    ).first()
     if not hospital:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hospital not found")
     return hospital
@@ -135,7 +137,9 @@ def update_hospital(
 
     verification_status cannot be changed via this endpoint.
     """
-    hospital = db.query(Hospital).filter(Hospital.id == hospital_id).first()
+    hospital = db.query(Hospital).filter(
+        Hospital.id == hospital_id, Hospital.is_active.is_(True)
+    ).first()
     if not hospital:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hospital not found")
 
@@ -172,7 +176,9 @@ def list_hospital_doctors(
     if not hospital:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hospital not found")
 
-    query = db.query(Doctor).filter(Doctor.hospital_id == hospital_id)
+    query = db.query(Doctor).filter(
+        Doctor.hospital_id == hospital_id, Doctor.is_active.is_(True)
+    )
     total = query.count()
     items = query.offset(offset).limit(limit).all()
     return DoctorListResponse(items=items, total=total, limit=limit, offset=offset)

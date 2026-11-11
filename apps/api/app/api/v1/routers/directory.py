@@ -83,6 +83,7 @@ def _provider_select(
         getattr(model, "website", literal(None)).label("website"),
         getattr(model, "hospital_type", literal(None)).label("hospital_type"),
         getattr(model, "opd_type", literal(None)).label("opd_type"),
+        getattr(model, "operating_hours", literal(None)).label("operating_hours"),
         getattr(model, "hospital_id", literal(None)).label("hospital_id"),
         (Hospital.name if model is Doctor else literal(None)).label("hospital_name"),
         getattr(model, "qualifications", literal(None)).label("qualifications"),

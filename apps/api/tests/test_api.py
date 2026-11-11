@@ -9,6 +9,7 @@ No credentials are printed or logged.
 
 import os
 from typing import Generator
+from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,13 +25,15 @@ from app.database import get_db  # noqa: E402
 
 
 @pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
     """Create a TestClient with an isolated database transaction per test.
 
     Each test gets its own database connection and transaction. All changes
     are rolled back when the test completes, ensuring test isolation without
     persisting data to the actual database.
     """
+    monkeypatch.setenv("ECARE_ENVIRONMENT", "test")
+    monkeypatch.setenv("ECARE_DEV_MODE", "true")
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         pytest.skip("DATABASE_URL not set")
@@ -76,8 +79,10 @@ def test_health_db_endpoint(client: TestClient):
 # Hospital API tests
 # ---------------------------------------------------------------------------
 
+TEST_MARKER = uuid4().hex
+
 HOSPITAL_PAYLOAD = {
-    "name": "Raichur General Hospital",
+    "name": f"eCare Test Hospital {TEST_MARKER}",
     "address": "123 Station Road, Raichur",
     "locality": "Station Area",
     "hospital_type": "General",
@@ -107,7 +112,7 @@ def test_create_hospital_authorized(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == HOSPITAL_PAYLOAD["name"]
-    assert data["slug"] == "raichur-general-hospital"
+    assert data["slug"] == HOSPITAL_PAYLOAD["name"].lower().replace(" ", "-")
     assert data["verification_status"] == "unverified"
     assert data["is_active"] is True
     assert data["operational_status"] == "unknown"
@@ -155,8 +160,8 @@ def test_create_hospital_invalid_input(client: TestClient):
 
 
 def test_list_hospitals_empty(client: TestClient):
-    """GET /hospitals returns empty list when no hospitals exist."""
-    response = client.get("/api/v1/hospitals")
+    """GET /hospitals returns an empty filtered result without assuming a blank DB."""
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}-absent")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -166,7 +171,7 @@ def test_list_hospitals_empty(client: TestClient):
 def test_list_hospitals_with_data(client: TestClient):
     """GET /hospitals returns created hospitals."""
     client.post("/api/v1/hospitals", json=HOSPITAL_PAYLOAD, headers=_auth_headers(True))
-    response = client.get("/api/v1/hospitals")
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -253,10 +258,10 @@ def test_list_hospitals_pagination(client: TestClient):
     for i in range(5):
         client.post(
             "/api/v1/hospitals",
-            json={**HOSPITAL_PAYLOAD, "name": f"Hospital {i}"},
+            json={**HOSPITAL_PAYLOAD, "name": f"eCare {TEST_MARKER} Hospital {i}"},
             headers=_auth_headers(True),
         )
-    response = client.get("/api/v1/hospitals?limit=2&offset=1")
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}&limit=2&offset=1")
     assert response.status_code == 200
     data = response.json()
     assert data["limit"] == 2
@@ -269,28 +274,28 @@ def test_list_hospitals_filters(client: TestClient):
     """GET /hospitals filters by search, locality, type, verification, emergency."""
     client.post(
         "/api/v1/hospitals",
-        json={**HOSPITAL_PAYLOAD, "name": "City Clinic", "locality": "City Center", "hospital_type": "Clinic", "emergency_services": False},
+        json={**HOSPITAL_PAYLOAD, "name": f"eCare {TEST_MARKER} City Clinic", "locality": f"{TEST_MARKER} City Center", "hospital_type": "Clinic", "emergency_services": False},
         headers=_auth_headers(True),
     )
     client.post(
         "/api/v1/hospitals",
-        json={**HOSPITAL_PAYLOAD, "name": "District Hospital", "locality": "District Area", "hospital_type": "General", "emergency_services": True},
+        json={**HOSPITAL_PAYLOAD, "name": f"eCare {TEST_MARKER} District Hospital", "locality": f"{TEST_MARKER} District Area", "hospital_type": "General", "emergency_services": True},
         headers=_auth_headers(True),
     )
-    response = client.get("/api/v1/hospitals?search=City")
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER} City")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    assert response.json()["items"][0]["name"] == "City Clinic"
-    response = client.get("/api/v1/hospitals?locality=District Area")
+    assert response.json()["items"][0]["name"] == f"eCare {TEST_MARKER} City Clinic"
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}&locality={TEST_MARKER} District Area")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    response = client.get("/api/v1/hospitals?hospital_type=Clinic")
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}&hospital_type=Clinic")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    response = client.get("/api/v1/hospitals?emergency_services=true")
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}&emergency_services=true")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    response = client.get("/api/v1/hospitals?verification_status=unverified")
+    response = client.get(f"/api/v1/hospitals?search={TEST_MARKER}&verification_status=unverified")
     assert response.status_code == 200
     assert response.json()["total"] == 2
 
@@ -300,7 +305,7 @@ def test_list_hospitals_filters(client: TestClient):
 # ---------------------------------------------------------------------------
 
 DOCTOR_PAYLOAD = {
-    "full_name": "Dr. Ramesh Kumar",
+    "full_name": f"Dr. eCare Test Doctor {TEST_MARKER}",
     "qualifications": "MBBS, MD",
     "specializations": "General Medicine",
     "experience_years": 10,
@@ -324,7 +329,7 @@ def test_create_doctor_authorized(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     assert data["full_name"] == DOCTOR_PAYLOAD["full_name"]
-    assert data["slug"] == "dr-ramesh-kumar"
+    assert data["slug"] == f"dr-ecare-test-doctor-{TEST_MARKER}"
     assert data["verification_status"] == "unverified"
     assert data["operational_status"] == "unknown"
     assert data["id"] is not None
@@ -349,8 +354,8 @@ def test_create_doctor_invalid_hospital(client: TestClient):
 
 
 def test_list_doctors_empty(client: TestClient):
-    """GET /doctors returns empty list when no doctors exist."""
-    response = client.get("/api/v1/doctors")
+    """GET /doctors returns an empty filtered result without assuming a blank DB."""
+    response = client.get(f"/api/v1/doctors?search={TEST_MARKER}-absent")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -360,7 +365,7 @@ def test_list_doctors_empty(client: TestClient):
 def test_list_doctors_with_data(client: TestClient):
     """GET /doctors returns created doctors."""
     client.post("/api/v1/doctors", json=DOCTOR_PAYLOAD, headers=_auth_headers(True))
-    response = client.get("/api/v1/doctors")
+    response = client.get(f"/api/v1/doctors?search={TEST_MARKER}")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -425,22 +430,22 @@ def test_list_doctors_filters(client: TestClient):
     """GET /doctors filters by search, specialization, hospital, verification."""
     client.post(
         "/api/v1/doctors",
-        json={**DOCTOR_PAYLOAD, "full_name": "Dr. Anita Rao", "specializations": "Pediatrics"},
+        json={**DOCTOR_PAYLOAD, "full_name": f"Dr. {TEST_MARKER} Anita Rao", "specializations": "Pediatrics"},
         headers=_auth_headers(True),
     )
     client.post(
         "/api/v1/doctors",
-        json={**DOCTOR_PAYLOAD, "full_name": "Dr. Sunil Desai", "specializations": "General Medicine"},
+        json={**DOCTOR_PAYLOAD, "full_name": f"Dr. {TEST_MARKER} Sunil Desai", "specializations": "General Medicine"},
         headers=_auth_headers(True),
     )
-    response = client.get("/api/v1/doctors?search=Anita")
+    response = client.get(f"/api/v1/doctors?search={TEST_MARKER} Anita")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    assert response.json()["items"][0]["full_name"] == "Dr. Anita Rao"
-    response = client.get("/api/v1/doctors?specialization=Pediatrics")
+    assert response.json()["items"][0]["full_name"] == f"Dr. {TEST_MARKER} Anita Rao"
+    response = client.get(f"/api/v1/doctors?search={TEST_MARKER}&specialization=Pediatrics")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    response = client.get("/api/v1/doctors?verification_status=unverified")
+    response = client.get(f"/api/v1/doctors?search={TEST_MARKER}&verification_status=unverified")
     assert response.status_code == 200
     assert response.json()["total"] == 2
 
@@ -450,7 +455,7 @@ def test_list_doctors_filters(client: TestClient):
 # ---------------------------------------------------------------------------
 
 LAB_PAYLOAD = {
-    "name": "Raichur Diagnostic Center",
+    "name": f"eCare Test Diagnostic Lab {TEST_MARKER}",
     "address": "45 Hospital Road, Raichur",
     "locality": "Hospital Area",
     "phone": "08532-345678",
@@ -472,7 +477,7 @@ def test_create_lab_authorized(client: TestClient):
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == LAB_PAYLOAD["name"]
-    assert data["slug"] == "raichur-diagnostic-center"
+    assert data["slug"] == LAB_PAYLOAD["name"].lower().replace(" ", "-")
     assert data["verification_status"] == "unverified"
     assert data["operational_status"] == "unknown"
     assert data["id"] is not None
@@ -487,7 +492,7 @@ def test_lab_status_and_home_collection_unknown_are_returned(
 ):
     payload = {
         **LAB_PAYLOAD,
-        "name": f"Status Lab {operational_status}",
+        "name": f"eCare {TEST_MARKER} Status Lab {operational_status}",
         "operational_status": operational_status,
         "home_sample_collection": home_sample_collection,
     }
@@ -508,8 +513,8 @@ def test_create_lab_duplicate_slug(client: TestClient):
 
 
 def test_list_labs_empty(client: TestClient):
-    """GET /labs returns empty list when no labs exist."""
-    response = client.get("/api/v1/labs")
+    """GET /labs returns an empty filtered result without assuming a blank DB."""
+    response = client.get(f"/api/v1/labs?search={TEST_MARKER}-absent")
     assert response.status_code == 200
     data = response.json()
     assert data["items"] == []
@@ -519,7 +524,7 @@ def test_list_labs_empty(client: TestClient):
 def test_list_labs_with_data(client: TestClient):
     """GET /labs returns created labs."""
     client.post("/api/v1/labs", json=LAB_PAYLOAD, headers=_auth_headers(True))
-    response = client.get("/api/v1/labs")
+    response = client.get(f"/api/v1/labs?search={TEST_MARKER}")
     assert response.status_code == 200
     data = response.json()
     assert data["total"] == 1
@@ -584,25 +589,25 @@ def test_list_labs_filters(client: TestClient):
     """GET /labs filters by search, locality, home_sample_collection, verification."""
     client.post(
         "/api/v1/labs",
-        json={**LAB_PAYLOAD, "name": "City Lab", "locality": "City Center", "home_sample_collection": True},
+        json={**LAB_PAYLOAD, "name": f"eCare {TEST_MARKER} City Lab", "locality": f"{TEST_MARKER} City Center", "home_sample_collection": True},
         headers=_auth_headers(True),
     )
     client.post(
         "/api/v1/labs",
-        json={**LAB_PAYLOAD, "name": "District Lab", "locality": "District Area", "home_sample_collection": False},
+        json={**LAB_PAYLOAD, "name": f"eCare {TEST_MARKER} District Lab", "locality": f"{TEST_MARKER} District Area", "home_sample_collection": False},
         headers=_auth_headers(True),
     )
-    response = client.get("/api/v1/labs?search=City")
+    response = client.get(f"/api/v1/labs?search={TEST_MARKER} City")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    assert response.json()["items"][0]["name"] == "City Lab"
-    response = client.get("/api/v1/labs?locality=District Area")
+    assert response.json()["items"][0]["name"] == f"eCare {TEST_MARKER} City Lab"
+    response = client.get(f"/api/v1/labs?search={TEST_MARKER}&locality={TEST_MARKER} District Area")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    response = client.get("/api/v1/labs?home_sample_collection=true")
+    response = client.get(f"/api/v1/labs?search={TEST_MARKER}&home_sample_collection=true")
     assert response.status_code == 200
     assert response.json()["total"] == 1
-    response = client.get("/api/v1/labs?verification_status=unverified")
+    response = client.get(f"/api/v1/labs?search={TEST_MARKER}&verification_status=unverified")
     assert response.status_code == 200
     assert response.json()["total"] == 2
 

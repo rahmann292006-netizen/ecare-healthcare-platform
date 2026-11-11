@@ -56,7 +56,7 @@ def list_labs(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
     """List diagnostic laboratories with optional filters and pagination."""
-    query = db.query(DiagnosticLab)
+    query = db.query(DiagnosticLab).filter(DiagnosticLab.is_active.is_(True))
     query = _apply_lab_filters(
         query, search, locality, home_sample_collection, verification_status
     )
@@ -68,7 +68,9 @@ def list_labs(
 @router.get("/{lab_id}", response_model=LabResponse)
 def get_lab(lab_id: int, db: Session = Depends(get_db)):
     """Get a single diagnostic laboratory by ID."""
-    lab = db.query(DiagnosticLab).filter(DiagnosticLab.id == lab_id).first()
+    lab = db.query(DiagnosticLab).filter(
+        DiagnosticLab.id == lab_id, DiagnosticLab.is_active.is_(True)
+    ).first()
     if not lab:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Laboratory not found")
     return lab
@@ -124,7 +126,9 @@ def update_lab(
 
     verification_status cannot be changed via this endpoint.
     """
-    lab = db.query(DiagnosticLab).filter(DiagnosticLab.id == lab_id).first()
+    lab = db.query(DiagnosticLab).filter(
+        DiagnosticLab.id == lab_id, DiagnosticLab.is_active.is_(True)
+    ).first()
     if not lab:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Laboratory not found")
 

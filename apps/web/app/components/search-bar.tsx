@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useDemoLocation } from "@/components/location-provider";
@@ -11,12 +11,58 @@ import { DEMO_PACKAGES } from "@/lib/mock-data";
 export interface SearchBarProps { placeholder?: string; onSearch: (query: string, locality: string) => void; }
 const HISTORY_KEY = "ecare_search_history";
 const popularSearches = ["Cardiology", "Diabetes", "Blood test", "Paediatrics"];
+const emptyHistory: string[] = [];
+let searchHistorySnapshot: string[] | null = null;
+const searchHistoryListeners = new Set<() => void>();
+
+function getSearchHistory() {
+  if (searchHistorySnapshot) return searchHistorySnapshot;
+  try {
+    const value: unknown = JSON.parse(window.localStorage.getItem(HISTORY_KEY) ?? "[]");
+    searchHistorySnapshot = Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string").slice(0, 5)
+      : [];
+  } catch {
+    searchHistorySnapshot = emptyHistory;
+  }
+  return searchHistorySnapshot;
+}
+
+function getServerSearchHistory() {
+  return emptyHistory;
+}
+
+function subscribeToSearchHistory(listener: () => void) {
+  searchHistoryListeners.add(listener);
+  return () => {
+    searchHistoryListeners.delete(listener);
+  };
+}
+
+function updateSearchHistorySnapshot(next?: string[]) {
+  if (next) {
+    searchHistorySnapshot = next;
+  } else {
+    searchHistorySnapshot = null;
+  }
+  searchHistoryListeners.forEach((listener) => listener());
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === HISTORY_KEY || event.key === null) updateSearchHistorySnapshot();
+  });
+}
 
 export function SearchBar({ placeholder = "Search doctors, specialities, hospitals or diagnostic tests...", onSearch }: SearchBarProps) {
   const { locationId } = useDemoLocation();
   const [query, setQuery] = useState("");
   const [locality, setLocality] = useState("");
-  const [history, setHistory] = useState<string[]>([]);
+  const history = useSyncExternalStore(
+    subscribeToSearchHistory,
+    getSearchHistory,
+    getServerSearchHistory,
+  );
   const [open, setOpen] = useState(false);
   const location = DEMO_LOCATIONS.find((item) => item.id === locationId) ?? DEMO_LOCATIONS[0];
   const suggestions = useMemo(() => {
@@ -32,8 +78,7 @@ export function SearchBar({ placeholder = "Search doctors, specialities, hospita
     return [...new Map(matches.map((item) => [item.label.toLowerCase(), item])).values()].slice(0, 7);
   }, [location.city, locationId, query]);
 
-  useEffect(() => { try { const value: unknown = JSON.parse(window.localStorage.getItem(HISTORY_KEY) ?? "[]"); setHistory(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 5) : []); } catch { setHistory([]); } }, []);
-  function remember(value: string) { const next = [value, ...history.filter((item) => item.toLowerCase() !== value.toLowerCase())].slice(0, 5); setHistory(next); window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); }
+  function remember(value: string) { const next = [value, ...history.filter((item) => item.toLowerCase() !== value.toLowerCase())].slice(0, 5); window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); updateSearchHistorySnapshot(next); }
   function submit(e: React.FormEvent) { e.preventDefault(); const value = query.trim(); if (!value && !locality.trim()) return; if (value) remember(value); setOpen(false); onSearch(value, locality.trim()); }
   function choose(value: string) { setQuery(value); remember(value); setOpen(false); onSearch(value, locality.trim()); }
 
@@ -46,6 +91,6 @@ export function SearchBar({ placeholder = "Search doctors, specialities, hospita
       </div>
     </form>
     {open && suggestions.length > 0 && <div id="search-suggestions" role="listbox" aria-label="Search suggestions" className="absolute z-30 mt-2 w-full overflow-hidden rounded-xl border border-border bg-background shadow-xl">{suggestions.map((item) => <button key={item.label} type="button" role="option" aria-selected="false" onMouseDown={(event) => event.preventDefault()} onClick={() => choose(item.label)} className="flex w-full items-center justify-between gap-3 border-b border-border px-4 py-3 text-left last:border-0 hover:bg-navy-50"><span className="font-medium text-ink">{item.label}</span><span className="text-xs text-ink-muted">{item.hint}</span></button>)}</div>}
-    {!query && !locality && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs"><span className="font-medium text-ink-muted">Popular:</span>{popularSearches.map((item) => <button key={item} type="button" onClick={() => choose(item)} className="rounded-full border border-border bg-background px-3 py-1.5 text-ink-muted hover:bg-teal-50">{item}</button>)}{history.length > 0 && <><span className="ml-1 font-medium text-ink-muted">Recent:</span>{history.slice(0, 3).map((item) => <button key={item} type="button" onClick={() => choose(item)} className="rounded-full bg-navy-50 px-3 py-1.5 text-ink-muted">{item}</button>)}<button type="button" onClick={() => { setHistory([]); window.localStorage.removeItem(HISTORY_KEY); }} className="underline underline-offset-2 text-ink-muted">Clear history</button></>}</div>}
+    {!query && !locality && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs"><span className="font-medium text-ink-muted">Popular:</span>{popularSearches.map((item) => <button key={item} type="button" onClick={() => choose(item)} className="rounded-full border border-border bg-background px-3 py-1.5 text-ink-muted hover:bg-teal-50">{item}</button>)}{history.length > 0 && <><span className="ml-1 font-medium text-ink-muted">Recent:</span>{history.slice(0, 3).map((item) => <button key={item} type="button" onClick={() => choose(item)} className="rounded-full bg-navy-50 px-3 py-1.5 text-ink-muted">{item}</button>)}<button type="button" onClick={() => { window.localStorage.removeItem(HISTORY_KEY); updateSearchHistorySnapshot(emptyHistory); }} className="underline underline-offset-2 text-ink-muted">Clear history</button></>}</div>}
   </div>;
 }

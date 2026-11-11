@@ -53,7 +53,7 @@ def list_doctors(
     offset: int = Query(0, ge=0, description="Offset for pagination"),
 ):
     """List doctors with optional filters and pagination."""
-    query = db.query(Doctor)
+    query = db.query(Doctor).filter(Doctor.is_active.is_(True))
     query = _apply_doctor_filters(
         query, search, specialization, hospital_id, verification_status
     )
@@ -65,7 +65,9 @@ def list_doctors(
 @router.get("/{doctor_id}", response_model=DoctorResponse)
 def get_doctor(doctor_id: int, db: Session = Depends(get_db)):
     """Get a single doctor by ID."""
-    doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
+    doctor = db.query(Doctor).filter(
+        Doctor.id == doctor_id, Doctor.is_active.is_(True)
+    ).first()
     if not doctor:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found")
     return doctor

@@ -29,7 +29,7 @@ from app.auth import (  # noqa: E402
     decode_access_token,
     ALGORITHM,
 )
-from app.models import User  # noqa: E402
+from app.models import Hospital, User  # noqa: E402
 
 
 @pytest.fixture
@@ -289,6 +289,35 @@ def test_provision_duplicate_email(client: TestClient, db_session: Session):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 409, response.text
+
+
+def test_dev_header_cannot_authorize_directory_write_in_production(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("ECARE_ENVIRONMENT", "production")
+    monkeypatch.setenv("ECARE_DEV_MODE", "true")
+    response = client.post(
+        "/api/v1/hospitals",
+        json={"name": "Blocked Test Listing", "address": "Test address"},
+        headers={"X-Ecare-Dev-Mode": "true"},
+    )
+    assert response.status_code == 403
+
+
+def test_admin_can_write_directory_listing_outside_development(
+    client: TestClient, db_session: Session, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setenv("ECARE_ENVIRONMENT", "production")
+    monkeypatch.setenv("ECARE_DEV_MODE", "false")
+    admin = _create_admin(db_session)
+    response = client.post(
+        "/api/v1/hospitals",
+        json={"name": "Admin Test Listing", "address": "Test address"},
+        headers={"Authorization": f"Bearer {_admin_token(admin.email)}"},
+    )
+    assert response.status_code == 201
+    assert response.json()["verification_status"] == "unverified"
+    assert db_session.query(Hospital).filter_by(name="Admin Test Listing").one()
 
 
 # ---------------------------------------------------------------------------

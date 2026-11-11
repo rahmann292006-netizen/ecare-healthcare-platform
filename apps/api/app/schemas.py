@@ -370,6 +370,7 @@ class ProviderDirectoryItem(BaseModel):
     website: Optional[str] = None
     hospital_type: Optional[str] = None
     opd_type: Optional[str] = None
+    operating_hours: Optional[str] = None
     hospital_id: Optional[int] = None
     hospital_name: Optional[str] = None
     qualifications: Optional[str] = None
@@ -494,10 +495,14 @@ class AppointmentCreate(BaseModel):
     appointment_date: date
     appointment_time: time
     location_id: Optional[str] = Field(None, max_length=100)
-    package_id: Optional[str] = Field(None, max_length=100)
+    package_id: Optional[int] = Field(None, ge=1, le=2_147_483_647)
     package_name: Optional[str] = Field(None, max_length=255)
     package_amount: Decimal = Field(Decimal("0"), ge=0, le=1000000)
-    payment_method: Literal["demo-card", "demo-upi", "demo-cash"] = "demo-card"
+    payment_method: Literal["demo"] = "demo"
+
+
+class AppointmentStatusUpdate(BaseModel):
+    status: Literal["demo_confirmed", "cancelled"]
 
 
 class PaymentRead(BaseModel):
@@ -535,6 +540,7 @@ class AppointmentRead(BaseModel):
     id: int
     reference: str
     user_id: int
+    patient_name: Optional[str] = None
     doctor_id: int
     doctor_name: str
     doctor_qualification: Optional[str] = None
@@ -546,7 +552,7 @@ class AppointmentRead(BaseModel):
     location: str
     city: str
     state: str
-    package_id: Optional[str] = None
+    package_id: Optional[int] = None
     package_name: Optional[str] = None
     package_amount: Decimal
     consultation_fee: Decimal
@@ -564,5 +570,241 @@ class AppointmentDetail(AppointmentRead):
     invoice: InvoiceRead
 
 
+class AppointmentAvailabilitySlot(BaseModel):
+    time: time
+    status: Literal["available", "unavailable"]
+    reason: Optional[str] = None
+
+
+class DoctorAppointmentAvailability(BaseModel):
+    doctor_id: int
+    appointment_date: date
+    consultation_days: list[str] = Field(default_factory=list)
+    opd_start: Optional[time] = None
+    opd_end: Optional[time] = None
+    clinic_location: Optional[str] = None
+    consultation_fee: Optional[Decimal] = None
+    duration_minutes: Optional[int] = None
+    slots: list[AppointmentAvailabilitySlot] = Field(default_factory=list)
+    fully_booked: bool = False
+    message: Optional[str] = None
+
+
 class DoctorScheduleUpdate(BaseModel):
     schedule: dict
+
+
+# ---------------------------------------------------------------------------
+# Family Members schemas
+# ---------------------------------------------------------------------------
+
+class FamilyMemberCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    relationship_type: Literal["self", "father", "mother", "child", "other"]
+
+
+class FamilyMemberRead(BaseModel):
+    id: int
+    user_id: int
+    name: str
+    relationship_type: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Family Health Reminders schemas
+# ---------------------------------------------------------------------------
+
+class ReminderCreate(BaseModel):
+    family_member_id: int = Field(..., ge=1)
+    title: str = Field(..., min_length=1, max_length=255)
+    category: Literal["checkup", "dental", "vaccination", "other"]
+    reminder_date: date
+    repeat_interval: Literal[
+        "none", "daily", "weekly", "monthly", "yearly", "half-yearly"
+    ] = "none"
+
+
+class ReminderUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    category: Optional[Literal["checkup", "dental", "vaccination", "other"]] = None
+    reminder_date: Optional[date] = None
+    repeat_interval: Optional[
+        Literal["none", "daily", "weekly", "monthly", "yearly", "half-yearly"]
+    ] = None
+    completed: Optional[bool] = None
+
+
+class ReminderRead(BaseModel):
+    id: int
+    user_id: int
+    family_member_id: Optional[int]
+    subscription_id: Optional[int] = None
+    title: str
+    category: str
+    reminder_date: date
+    repeat_interval: str
+    completed: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# Health checkup package schemas
+# ---------------------------------------------------------------------------
+
+class PackageInclusionBase(BaseModel):
+    test_name: str = Field(..., min_length=1, max_length=255)
+    display_order: int = Field(0, ge=0)
+
+
+class PackageInclusionCreate(PackageInclusionBase):
+    pass
+
+
+class PackageInclusionRead(PackageInclusionBase):
+    id: int
+    package_id: int
+
+    model_config = {"from_attributes": True}
+
+
+class PackageBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+    slug: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
+    provider_name: str = Field(..., min_length=1, max_length=255)
+    provider_type: str = Field("diagnostic_lab", max_length=50, description="hospital or diagnostic_lab")
+    price: float = Field(..., ge=0, description="Price in INR")
+    currency: str = Field("INR", max_length=10)
+    city: str = Field("Raichur", max_length=100)
+    state: str = Field("Karnataka", max_length=100)
+    locality: Optional[str] = Field(None, max_length=255)
+    category: str = Field("checkup", max_length=50, description="checkup, dental, vaccination, or other")
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    min_age_years: Optional[int] = Field(None, ge=0, le=130)
+    max_age_years: Optional[int] = Field(None, ge=0, le=130)
+    validity_period: Optional[Literal["monthly", "quarterly", "yearly"]] = None
+    validity_description: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _validate_age_range(self):
+        if (
+            self.min_age_years is not None
+            and self.max_age_years is not None
+            and self.min_age_years > self.max_age_years
+        ):
+            raise ValueError("min_age_years cannot exceed max_age_years")
+        return self
+
+
+class PackageCreate(PackageBase):
+    inclusions: list[PackageInclusionCreate] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _generate_slug(self):
+        if not self.slug:
+            self.slug = slugify(self.name)
+        return self
+
+
+class PackageUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    slug: Optional[str] = Field(None, max_length=255)
+    description: Optional[str] = None
+    provider_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    provider_type: Optional[str] = Field(None, max_length=50)
+    price: Optional[float] = Field(None, ge=0)
+    currency: Optional[str] = Field(None, max_length=10)
+    city: Optional[str] = Field(None, max_length=100)
+    state: Optional[str] = Field(None, max_length=100)
+    locality: Optional[str] = Field(None, max_length=255)
+    category: Optional[str] = Field(None, max_length=50)
+    source: Optional[str] = None
+    source_url: Optional[str] = None
+    min_age_years: Optional[int] = Field(None, ge=0, le=130)
+    max_age_years: Optional[int] = Field(None, ge=0, le=130)
+    validity_period: Optional[Literal["monthly", "quarterly", "yearly"]] = None
+    validity_description: Optional[str] = None
+    inclusions: Optional[list[PackageInclusionCreate]] = None
+    is_active: Optional[bool] = None
+
+
+class PackageRead(PackageBase):
+    id: int
+    is_verified: bool
+    is_demo: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    inclusions: list[PackageInclusionRead] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
+class PackageListResponse(BaseModel):
+    items: list[PackageRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class PackageVerificationUpdate(BaseModel):
+    source: str = Field(..., min_length=1, max_length=500)
+    source_url: Optional[str] = Field(None, max_length=1000)
+
+
+class SubscriptionCreate(BaseModel):
+    plan_id: int = Field(..., ge=1, le=2_147_483_647)
+    family_member_id: Optional[int] = Field(None, ge=1, le=2_147_483_647)
+    age_years: Optional[int] = Field(None, ge=0, le=130)
+
+
+class SubscriptionCancellationRequest(BaseModel):
+    reason: Optional[str] = Field(None, max_length=500)
+
+
+class SubscriptionEventRead(BaseModel):
+    id: int
+    actor_user_id: Optional[int]
+    event_type: str
+    previous_status: Optional[str]
+    new_status: str
+    payment_status: str
+    amount: Decimal
+    details: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SubscriptionRead(BaseModel):
+    id: int
+    user_id: int
+    plan_id: int
+    family_member_id: Optional[int]
+    age_years_at_start: Optional[int]
+    amount: Decimal
+    currency: str
+    start_at: datetime
+    expires_at: datetime
+    status: Literal["pending_payment", "scheduled", "active", "expired", "cancelled"]
+    payment_status: Literal["pending", "simulated", "paid", "failed", "refunded"]
+    renewal_of_id: Optional[int]
+    renewal_subscription_id: Optional[int]
+    created_at: datetime
+    updated_at: datetime
+    plan: PackageRead
+    reminder: Optional[ReminderRead] = None
+    events: list[SubscriptionEventRead] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
+class SubscriptionPaymentOptionsRead(BaseModel):
+    mode: Literal["simulated", "unavailable"]
+    message: str

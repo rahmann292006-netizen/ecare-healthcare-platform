@@ -72,7 +72,7 @@ function FindDirectory() {
   const [sort, setSort] = useState<ProviderSort>("name_asc");
   const [offset, setOffset] = useState(0);
   const [providers, setProviders] = useState<Array<ProviderDirectoryItem | FictionalProvider>>([]);
-  const [specialities, setSpecialities] = useState<Speciality[]>([]);
+  const [specialities, setSpecialities] = useState<Speciality[]>(FICTIONAL_SPECIALITIES);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +85,6 @@ function FindDirectory() {
 
   useEffect(() => {
     let active = true;
-    setSpecialities(FICTIONAL_SPECIALITIES);
     listSpecialities()
       .then((items) => {
         if (active) setSpecialities([...FICTIONAL_SPECIALITIES, ...items.filter((item) => !FICTIONAL_SPECIALITIES.some((demo) => demo.name.toLowerCase() === item.name.toLowerCase()))]);

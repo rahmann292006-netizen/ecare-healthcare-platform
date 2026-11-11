@@ -10,6 +10,7 @@ import { useDemoLocation } from "@/components/location-provider";
 import { DEMO_LOCATIONS } from "@/lib/locations";
 import { DEMO_PACKAGES } from "@/lib/mock-data";
 import { DoctorAvatar } from "@/components/doctor-avatar";
+import { useCurrentTime } from "@/lib/use-current-time";
 
 const providerTypesWithSamples = [
   { type: "hospital" as const },
@@ -27,7 +28,7 @@ export function HomeDirectoryHighlights() {
   const { locationId } = useDemoLocation();
   const location = DEMO_LOCATIONS.find((item) => item.id === locationId) ?? DEMO_LOCATIONS[0];
   const [counts, setCounts] = useState<Record<string, number | null>>({});
-  const [availability, setAvailability] = useState<{ today: FictionalProvider[]; next: Record<number, { date: string; time: string; location: string } | null> }>({ today: [], next: {} });
+  const nowTimestamp = useCurrentTime();
   useEffect(() => {
     let active = true;
     Promise.all(providerTypesWithSamples.map(async (item) => {
@@ -41,10 +42,11 @@ export function HomeDirectoryHighlights() {
     return () => { active = false; };
   }, [location.city]);
 
-  useEffect(() => {
-    const now = new Date();
+  const availability = useMemo(() => {
+    if (nowTimestamp === 0) return null;
+    const now = new Date(nowTimestamp);
     const today = localDate(now);
-    const timeNow = currentTime();
+    const timeNow = currentTime(now);
     const next: Record<number, { date: string; time: string; location: string } | null> = {};
     for (const doctor of FICTIONAL_DOCTORS) {
       next[doctor.id] = null;
@@ -56,10 +58,16 @@ export function HomeDirectoryHighlights() {
         if (slot) { next[doctor.id] = { date, ...slot }; break; }
       }
     }
-    setAvailability({ today: FICTIONAL_DOCTORS.filter((doctor) => Boolean(next[doctor.id]?.date === today)), next });
-  }, []);
+    return {
+      today: FICTIONAL_DOCTORS.filter((doctor) => Boolean(next[doctor.id]?.date === today)),
+      next,
+    };
+  }, [nowTimestamp]);
 
-  const locationDoctors = FICTIONAL_DOCTORS.filter((doctor) => doctor.locationId === locationId);
+  const locationDoctors = useMemo(
+    () => FICTIONAL_DOCTORS.filter((doctor) => doctor.locationId === locationId),
+    [locationId],
+  );
   const locationHospitals = FICTIONAL_HOSPITALS.filter((provider) => provider.locationId === locationId);
   const locationLabs = FICTIONAL_LABS.filter((provider) => provider.locationId === locationId);
   const packageCount = DEMO_PACKAGES.filter((item) => item.locationId === locationId).length;
@@ -69,7 +77,7 @@ export function HomeDirectoryHighlights() {
     const totals = new Map<string, number>();
     locationDoctors.forEach((doctor) => doctor.specialities.forEach((speciality) => totals.set(speciality.name, (totals.get(speciality.name) ?? 0) + 1)));
     return [...totals.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 5);
-  }, [locationId]);
+  }, [locationDoctors]);
 
   return <>
     <section className="px-4 py-10 sm:px-6 lg:px-8">
@@ -81,10 +89,10 @@ export function HomeDirectoryHighlights() {
     <section className="bg-navy-50 px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-sm font-medium text-teal-700">Illustrative healthcare listings · {location.label}</p><h2 className="text-2xl font-bold text-ink">Suggested Doctors</h2></div><Link href={`/find?provider_type=doctor&location=${encodeURIComponent(locationId)}`} className="text-sm font-semibold text-teal-700 underline underline-offset-2">View All Doctors</Link></div>
-        <DoctorGroup title="Recommended Doctors" doctors={recommended} nextSlots={availability.next} />
-        <section className="mt-8"><h3 className="mb-3 text-lg font-semibold text-ink">Available Today · demo availability</h3>{availability.today.filter((doctor) => doctor.locationId === locationId).length ? <DoctorGrid doctors={availability.today.filter((doctor) => doctor.locationId === locationId).slice(0, 4)} nextSlots={availability.next} /> : <p className="text-sm text-ink-muted">No matching demo providers found in this location for today.</p>}</section>
+        <DoctorGroup title="Recommended Doctors" doctors={recommended} nextSlots={availability?.next ?? {}} />
+        <section className="mt-8"><h3 className="mb-3 text-lg font-semibold text-ink">Available Today · demo availability</h3>{availability ? availability.today.filter((doctor) => doctor.locationId === locationId).length ? <DoctorGrid doctors={availability.today.filter((doctor) => doctor.locationId === locationId).slice(0, 4)} nextSlots={availability.next} /> : <p className="text-sm text-ink-muted">No matching demo providers found in this location for today.</p> : <p role="status" className="text-sm text-ink-muted">Checking illustrative availability…</p>}</section>
         <section className="mt-8"><div className="mb-3 flex items-center justify-between"><h3 className="text-lg font-semibold text-ink">Popular Specialities · {location.city}</h3><Link href={`/specialities?location=${encodeURIComponent(locationId)}`} className="text-sm font-medium text-teal-700 underline">View All Specialities</Link></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{popular.slice(0, 4).map(([name, count]) => { const speciality = FICTIONAL_DOCTORS.flatMap((doctor) => doctor.specialities).find((item) => item.name === name); return <Card key={name} className="p-4"><h4 className="font-semibold text-ink">{name}</h4><p className="mt-1 text-xs text-ink-muted">{count} illustrative profile{count === 1 ? "" : "s"} in {location.city}</p><Link href={`/find?provider_type=doctor&speciality=${speciality?.id}&location=${encodeURIComponent(locationId)}`} className="mt-3 inline-block text-sm font-medium text-teal-700 underline">Explore</Link></Card>; })}</div></section>
-        <DoctorGroup title="Recently Added Doctors" doctors={recent} nextSlots={availability.next} className="mt-8" />
+        <DoctorGroup title="Recently Added Doctors" doctors={recent} nextSlots={availability?.next ?? {}} className="mt-8" />
         <div className="mt-6"><Link href={`/find?provider_type=doctor&location=${encodeURIComponent(locationId)}`} className="inline-flex w-full items-center justify-center rounded-[var(--radius-control)] bg-navy-900 px-5 py-3 text-sm font-medium text-white hover:bg-navy-800 sm:w-auto">View All Doctors</Link></div>
       </div>
     </section>
@@ -109,4 +117,4 @@ function DoctorSuggestion({ doctor, next }: { doctor: FictionalProvider; next: {
 }
 
 function localDate(date: Date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
-function currentTime() { const now = new Date(); return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`; }
+function currentTime(date: Date) { return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`; }

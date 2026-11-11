@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ProviderDirectoryItem } from "@/lib/api";
+import { hasBookableDoctorSchedule, type ProviderDirectoryItem } from "@/lib/api";
 import { getDoctorHospital, type FictionalProvider } from "@/lib/fictional-directory";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
@@ -24,7 +24,16 @@ export function ProviderCard({ provider, typeLabel }: ProviderCardProps) {
   const fictional = provider as FictionalProvider;
   const providerLocationId = fictional.locationId ?? locationIdFor(provider.city, provider.state);
   const associatedHospital = provider.provider_type === "doctor" ? getDoctorHospital(fictional) : undefined;
-  const privateSessions = fictional.schedule ? Object.values(fictional.schedule.privateOpd).filter(Boolean) : [];
+  const privateSessions = provider.schedule ? Object.values(provider.schedule.privateOpd).filter(Boolean) : [];
+  const canBook =
+    provider.provider_type === "doctor" &&
+    hasBookableDoctorSchedule(provider.schedule) &&
+    privateSessions.length > 0 &&
+    provider.consultation_fee !== null &&
+    provider.hospital_id !== null &&
+    provider.hospital_name !== null &&
+    provider.city !== null &&
+    provider.state !== null;
 
   return (
     <Card className="p-4 transition-shadow hover:shadow-[var(--shadow-card)]">
@@ -83,13 +92,18 @@ export function ProviderCard({ provider, typeLabel }: ProviderCardProps) {
           >
             View Profile
           </Link>
-          {provider.provider_type === "doctor" && fictional.schedule && (
+          {provider.provider_type === "doctor" && canBook && (
             <Link href={`/booking?doctor_id=${provider.id}&location=${encodeURIComponent(providerLocationId)}`} className="rounded-[var(--radius-control)] bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-600">
               Book Appointment
             </Link>
           )}
         </div>
       </div>
+      {provider.provider_type === "doctor" && !canBook && (
+        <p className="mt-3 text-xs text-ink-muted">
+          Currently unavailable for online appointment booking.
+        </p>
+      )}
     </Card>
   );
 }

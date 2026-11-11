@@ -9,18 +9,13 @@ export interface DemoSession {
   location: string;
 }
 
-export interface FictionalProvider extends ProviderDirectoryItem {
+export interface FictionalProvider extends Omit<ProviderDirectoryItem, "schedule"> {
   locationId: string;
   qualification?: string;
   experienceYears?: number;
   biography?: string;
   consultationFee?: number;
-  schedule?: {
-    governmentDuty: Partial<Record<number, DemoSession>>;
-    privateOpd: Partial<Record<number, DemoSession>>;
-    durationMinutes: number;
-    unavailableDays: number[];
-  };
+  schedule: ProviderDirectoryItem["schedule"];
   addedDaysAgo?: number;
 }
 
@@ -58,6 +53,8 @@ const hospitals: FictionalProvider[] = facilityNames.map((name, index) => {
   locality: localities[index], city: location.city, state: location.state, locationId: location.id,
   phone: "Fictional contact only — not a real phone number", email: `hospital${index + 1}@example.com`,
   website: null, hospital_type: "Fictional sample hospital", opd_type: null, hospital_id: null,
+  hospital_name: null, qualifications: null, experience_years: null,
+  consultation_fee: null, schedule: null,
   specialities: [FICTIONAL_SPECIALITIES[index % 10]], source: "Fictional sample data", source_url: null,
   verified_at: null, is_verified: false, is_demo: true, verification_status: "Fictional sample — unverified",
   };
@@ -76,7 +73,9 @@ const labs: FictionalProvider[] = [
   address: `Fictional demo address, ${localities[index]}, ${location.label}`,
   locality: localities[index], city: location.city, state: location.state, locationId: location.id,
   phone: "Fictional contact only — not a real phone number", email: `lab${index + 1}@example.com`,
-  website: null, hospital_type: null, opd_type: null, hospital_id: null, specialities: [],
+  website: null, hospital_type: null, opd_type: null, hospital_id: null,
+  hospital_name: null, qualifications: null, experience_years: null,
+  consultation_fee: null, schedule: null, specialities: [],
   source: "Fictional sample data", source_url: null, verified_at: null, is_verified: false,
   is_demo: true, verification_status: "Fictional sample — unverified",
   };
@@ -106,10 +105,15 @@ const doctorSeeds: DoctorSeed[] = [
   ["Rahul Anand", "MSc (Clinical Nutrition)", 5, 20, 10, 300],
 ];
 
-const weekday = (days: number[], start: string, end: string, location: string, breakStart?: string, breakEnd?: string) =>
-  Object.fromEntries(days.map((day) => [day, { start, end, location, breakStart, breakEnd }])) as Partial<Record<number, DemoSession>>;
+const weekday = (days: number[], start: string, end: string, location: string, breakStart?: string, breakEnd?: string): Record<string, DemoSession> =>
+  Object.fromEntries(days.map((day) => [String(day), { start, end, location, breakStart, breakEnd }]));
 
-const scheduleTemplates = [
+type DemoScheduleTemplate = {
+  governmentDuty: Record<string, DemoSession>;
+  privateOpd: Record<string, DemoSession>;
+};
+
+const scheduleTemplates: DemoScheduleTemplate[] = [
   { governmentDuty: weekday([1, 2, 3, 4, 5], "09:00", "13:00", "Fictional District Teaching Hospital"), privateOpd: weekday([1, 2, 3, 4, 5], "17:00", "19:00", "Fictional Aarogya Clinic", "18:00", "18:15") },
   { governmentDuty: weekday([1, 2, 3, 4, 5, 6], "10:00", "14:00", "Fictional Community Hospital"), privateOpd: weekday([2, 4], "17:00", "20:00", "Fictional Rao Family Clinic", "18:30", "19:00") },
   { governmentDuty: weekday([3, 4, 5], "09:00", "13:00", "Fictional Taluk Hospital"), privateOpd: weekday([1, 2, 3, 4, 5, 6], "16:00", "19:00", "Fictional Sushruta Clinic", "17:30", "17:45") },
@@ -122,13 +126,13 @@ const scheduleTemplates = [
   { governmentDuty: weekday([2, 3, 4, 5], "09:00", "13:00", "Fictional Regional Hospital"), privateOpd: weekday([1, 2, 4, 5, 6], "17:00", "20:00", "Fictional Green Park Clinic", "18:30", "18:45") },
 ];
 
-function rotateAndLabelSessions(sessions: Partial<Record<number, DemoSession>>, rotation: number, doctorName: string): Partial<Record<number, DemoSession>> {
+function rotateAndLabelSessions(sessions: Record<string, DemoSession>, rotation: number, doctorName: string): Record<string, DemoSession> {
   return Object.fromEntries(Object.entries(sessions).flatMap(([day, session]) => {
     if (!session) return [];
     const sourceDay = Number(day);
     const targetDay = rotation === 0 ? sourceDay : ((sourceDay - 1 + rotation) % 6) + 1;
     return [[targetDay, { ...session, location: `${session.location} · ${doctorName.split(" ")[0]} sample room` }]];
-  })) as Partial<Record<number, DemoSession>>;
+  })) as Record<string, DemoSession>;
 }
 
 export const FICTIONAL_DOCTORS: FictionalProvider[] = doctorSeeds.map(([name, qualification, experienceYears, specialityId, hospitalIndex, consultationFee], index) => {
@@ -148,6 +152,8 @@ export const FICTIONAL_DOCTORS: FictionalProvider[] = doctorSeeds.map(([name, qu
     address: hospital.address, locality: hospital.locality, city: hospital.city, state: hospital.state, locationId: hospital.locationId,
     phone: "Fictional contact only — not a real phone number", email: `doctor${String(index + 1).padStart(2, "0")}@example.com`,
     website: null, hospital_type: null, opd_type: "Fictional private OPD", hospital_id: hospital.id,
+    hospital_name: hospital.name, qualifications: qualification,
+    experience_years: experienceYears, consultation_fee: consultationFee,
     specialities: [special], source: "Fictional sample data", source_url: null, verified_at: null,
     is_verified: false, is_demo: true, verification_status: "Fictional sample — unverified",
     consultationFee, schedule: { ...schedule, durationMinutes: index % 3 === 0 ? 30 : 20, unavailableDays: [0] },

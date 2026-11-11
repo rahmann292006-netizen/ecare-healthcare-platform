@@ -39,7 +39,7 @@ export default function Home() {
             <div>
               <h2 className="text-2xl font-bold text-ink">Featured health packages</h2>
               <p className="text-sm text-ink-muted">
-                Sample packages â€” not real provider data.
+                Sample packages — not real provider data.
               </p>
             </div>
           </div>
@@ -67,7 +67,7 @@ export default function Home() {
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 flex shrink-0 rounded bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">3</span>
-                Send an appointment request â€” a request is not a confirmed booking.
+                Send an appointment request — a request is not a confirmed booking.
               </li>
               <li className="flex items-start gap-3">
                 <span className="mt-0.5 flex shrink-0 rounded bg-teal-700 px-2 py-0.5 text-xs font-bold text-white">4</span>
