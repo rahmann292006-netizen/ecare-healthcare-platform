@@ -27,6 +27,7 @@ export function ProviderCard({ provider, typeLabel }: ProviderCardProps) {
   const privateSessions = provider.schedule ? Object.values(provider.schedule.privateOpd).filter(Boolean) : [];
   const canBook =
     provider.provider_type === "doctor" &&
+    !provider.is_demo &&
     hasBookableDoctorSchedule(provider.schedule) &&
     privateSessions.length > 0 &&
     provider.consultation_fee !== null &&
@@ -47,7 +48,7 @@ export function ProviderCard({ provider, typeLabel }: ProviderCardProps) {
             <Badge variant={provider.is_verified ? "verified" : "unverified"}>
               {provider.is_verified ? "Verified" : "Unverified"}
             </Badge>
-            {provider.is_demo && <Badge variant="info">Sample data</Badge>}
+            {provider.is_demo && <Badge variant="info">Demo only · not a real provider</Badge>}
           </div>
           <p className="text-sm text-ink-muted">{providerSubType || typeLabel}</p>
           <p className="text-sm text-ink-muted">
@@ -87,7 +88,7 @@ export function ProviderCard({ provider, typeLabel }: ProviderCardProps) {
         </div>
         <div className="flex items-end gap-2">
           <Link
-            href={`/find/${provider.provider_type}/${provider.id}?location=${encodeURIComponent(providerLocationId)}`}
+            href={`/find/${provider.provider_type}/${provider.id}?location=${encodeURIComponent(providerLocationId)}${"locationId" in provider ? "&source=sample" : ""}`}
             className="rounded-[var(--radius-control)] bg-navy-900 px-4 py-2 text-sm font-medium text-white hover:bg-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-700"
           >
             View Profile

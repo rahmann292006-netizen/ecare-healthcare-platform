@@ -50,6 +50,8 @@ export default function PackagesPage() {
   const visibleError = error?.key === requestKey ? error.message : null;
 
   const categories = ["checkup", "dental", "vaccination", "other"];
+  const apiPackages = packages.filter((pkg) => !pkg.is_demo);
+  const demoPackages = packages.filter((pkg) => pkg.is_demo);
 
   return (
     <section className="px-4 py-8 sm:py-12">
@@ -110,28 +112,25 @@ export default function PackagesPage() {
             </p>
           </div>
         ) : !visibleError && !loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {packages.map((pkg) => (
-              <PackageCard
-                key={pkg.id}
-                id={pkg.id}
-                city={pkg.city}
-                locality={pkg.locality}
-                isDemo={pkg.is_demo}
-                isVerified={pkg.is_verified}
-                isActive={pkg.is_active}
-                source={pkg.source}
-                verifiedAt={pkg.verified_at}
-                title={pkg.name}
-                provider={pkg.provider_name}
-                providerType={pkg.provider_type}
-                price={pkg.price}
-                currency={pkg.currency}
-                includedTests={pkg.inclusions.map((inc) => inc.test_name)}
-                offerBadge={null}
-                description={pkg.description ?? "No description provided."}
-              />
-            ))}
+          <div className="space-y-8">
+            {apiPackages.length > 0 && (
+              <section aria-labelledby="api-packages">
+                <h2 id="api-packages" className="mb-1 text-lg font-semibold text-ink">API-backed packages</h2>
+                <p className="mb-3 text-sm text-ink-muted">Provider source and verification status are shown on each package. API-backed does not mean verified.</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {apiPackages.map((pkg) => <PackageCard key={pkg.id} id={pkg.id} city={pkg.city} locality={pkg.locality} isDemo={pkg.is_demo} isVerified={pkg.is_verified} isActive={pkg.is_active} source={pkg.source} verifiedAt={pkg.verified_at} title={pkg.name} provider={pkg.provider_name} providerType={pkg.provider_type} price={pkg.price} currency={pkg.currency} includedTests={pkg.inclusions.map((inc) => inc.test_name)} offerBadge={null} description={pkg.description ?? "No description provided."} />)}
+                </div>
+              </section>
+            )}
+            {demoPackages.length > 0 && (
+              <section aria-labelledby="demo-packages">
+                <h2 id="demo-packages" className="mb-1 text-lg font-semibold text-ink">Demo/sample packages — not real provider offers</h2>
+                <p className="mb-3 text-sm text-ink-muted">Fictional display data only; these packages cannot be booked or subscribed to.</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {demoPackages.map((pkg) => <PackageCard key={pkg.id} id={pkg.id} city={pkg.city} locality={pkg.locality} isDemo={pkg.is_demo} isVerified={pkg.is_verified} isActive={pkg.is_active} source={pkg.source} verifiedAt={pkg.verified_at} title={pkg.name} provider={pkg.provider_name} providerType={pkg.provider_type} price={pkg.price} currency={pkg.currency} includedTests={pkg.inclusions.map((inc) => inc.test_name)} offerBadge={null} description={pkg.description ?? "No description provided."} />)}
+                </div>
+              </section>
+            )}
           </div>
         ) : null}
       </div>

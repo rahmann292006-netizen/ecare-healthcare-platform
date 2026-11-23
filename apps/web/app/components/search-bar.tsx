@@ -6,7 +6,6 @@ import { Button } from "./ui/button";
 import { useDemoLocation } from "@/components/location-provider";
 import { DEMO_LOCATIONS } from "@/lib/locations";
 import { FICTIONAL_DOCTORS, FICTIONAL_HOSPITALS, FICTIONAL_LABS } from "@/lib/fictional-directory";
-import { DEMO_PACKAGES } from "@/lib/mock-data";
 
 export interface SearchBarProps { placeholder?: string; onSearch: (query: string, locality: string) => void; }
 const HISTORY_KEY = "ecare_search_history";
@@ -72,7 +71,6 @@ export function SearchBar({ placeholder = "Search doctors, specialities, hospita
       ...FICTIONAL_DOCTORS.filter((item) => item.locationId === locationId && `${item.name} ${item.specialities.map((s) => s.name).join(" ")}`.toLowerCase().includes(text)).map((item) => ({ label: item.name, hint: `${item.specialities[0].name} · sample` })),
       ...FICTIONAL_HOSPITALS.filter((item) => item.locationId === locationId && item.name.toLowerCase().includes(text)).map((item) => ({ label: item.name, hint: `Hospital · ${location.city} sample` })),
       ...FICTIONAL_LABS.filter((item) => item.locationId === locationId && item.name.toLowerCase().includes(text)).map((item) => ({ label: item.name, hint: `Laboratory · ${location.city} sample` })),
-      ...DEMO_PACKAGES.filter((item) => item.locationId === locationId && item.title.toLowerCase().includes(text)).map((item) => ({ label: item.title, hint: "Sample package" })),
       ...["Cardiology", "Dermatology", "General Medicine", "Orthopaedics", "Paediatrics", "Neurology", "Dentistry", "Gynaecology", "ENT", "Ophthalmology"].filter((name) => name.toLowerCase().includes(text)).map((name) => ({ label: name, hint: "Speciality" })),
     ];
     return [...new Map(matches.map((item) => [item.label.toLowerCase(), item])).values()].slice(0, 7);

@@ -46,29 +46,16 @@ All directory entities (`hospitals`, `doctors`, `diagnostic_labs`) support these
 Create `apps/api/.env` (this file is Git-ignored — never commit it):
 
 ```
-DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+DATABASE_URL=postgresql+psycopg://<user>:<password>@<host>:<port>/<database>
 ```
 
 Do not include real credentials in this README or in version control.
 
-### Production Deployment Checklist
+### Production Deployment
 
-The API image is defined in `Dockerfile`; it starts Uvicorn and does not apply database migrations. Configure runtime values in the hosting provider's secret/environment settings, never in the image or repository:
+The API has a Render Blueprint at [`../../render.yaml`](../../render.yaml) and a deployment runbook at [`docs/deployment.md`](docs/deployment.md). The Blueprint configures the Docker web service, `/health` health check, production flags, secret handling, and Vercel CORS input. It does not create a database or run migrations.
 
-| Variable | Production requirement |
-|----------|------------------------|
-| `DATABASE_URL` | Managed PostgreSQL connection string stored as a secret; do not use the example `_test` URL. |
-| `ECARE_SECRET_KEY` | At least 32 bytes of cryptographically random secret material; store as a secret. Rotating it invalidates existing access tokens. |
-| `ECARE_CORS_ORIGINS` | Exact deployed frontend origin(s), comma-separated; do not use `*`. |
-| `ECARE_ENVIRONMENT` | `production`. |
-| `ECARE_DEV_MODE` | `false`. |
-| `ECARE_SIMULATED_PAYMENTS_ENABLED` | `false`; no real payment gateway is implemented. |
-| `ECARE_ACCESS_TOKEN_EXPIRE_MINUTES` | Optional; defaults to 30. |
-| `PORT` | Use the platform-provided value when available; the container defaults to `8000`. |
-
-`NEXT_PUBLIC_API_URL` is also required in the Vercel frontend environment and must be the actual deployed API origin. Set it only after that URL exists and has been verified.
-
-**Deployment is not currently ready to execute.** Alembic is deliberately guarded to loopback PostgreSQL databases ending in `_test`; there is no approved production migration procedure in this repository. Do not weaken or bypass that guard to deploy. Define and review a separate production migration process before creating or using a production database. After an approved deployment, verify `/health`, `/health/db`, CORS preflight, authentication, and a package subscription flow. No backend URL or production environment has been verified, and no service or deployment has been created.
+**Database-backed production use is not ready:** Alembic remains restricted to loopback PostgreSQL databases ending in `_test`; this repository has no approved production migration procedure. Keep this guard intact and follow the migration blocker in the deployment runbook before using a production schema.
 
 ### Dependency Installation
 
@@ -80,6 +67,8 @@ pip install -r requirements.txt
 ```
 
 ## Migration Commands
+
+> These commands are accepted only for an explicitly marked loopback PostgreSQL database ending in `_test` with `ECARE_DATABASE_ENV=test`. They are test/development instructions only. Do not target production or bypass the Alembic guard. A separately reviewed production migration process is required before using a production schema.
 
 ```bash
 cd apps/api

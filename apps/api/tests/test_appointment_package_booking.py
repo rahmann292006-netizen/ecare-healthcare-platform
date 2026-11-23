@@ -340,6 +340,30 @@ def test_booking_without_package_remains_supported(booking_context):
     assert Decimal(result["total_amount"]) == Decimal("100")
 
 
+def test_demo_doctor_cannot_be_booked_or_show_availability(booking_context):
+    client, session, _, doctor, _, headers, request_data, appointment_date = booking_context
+    doctor.is_demo = True
+    session.flush()
+
+    availability = client.get(
+        f"/api/v1/appointments/availability/{doctor.id}",
+        params={"appointment_date": appointment_date},
+    )
+    assert availability.status_code == 200
+    assert availability.json()["slots"] == []
+    assert availability.json()["message"] == (
+        "Demo/sample doctor records cannot be booked."
+    )
+
+    booking = client.post(
+        "/api/v1/appointments/",
+        headers=headers,
+        json=request_data,
+    )
+    assert booking.status_code == 409
+    assert booking.json()["detail"] == "Demo/sample doctor records cannot be booked"
+
+
 def test_availability_uses_provider_schedule_and_marks_booked_slots(booking_context):
     client, _, _, doctor, _, headers, request_data, appointment_date = booking_context
 

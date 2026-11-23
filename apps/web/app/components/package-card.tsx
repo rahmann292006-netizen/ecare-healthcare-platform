@@ -60,7 +60,7 @@ export function PackageCard({
             <Badge variant="verified">{offerBadge}</Badge>
           )}
           {!offerBadge && (demoPackage ? (
-            <Badge variant="info">Sample only</Badge>
+            <Badge variant="info">Demo only - not a real offer</Badge>
           ) : isVerified ? (
             <Badge variant="verified">Verified</Badge>
           ) : (

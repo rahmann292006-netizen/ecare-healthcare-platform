@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,8 @@ export default function ProviderDetailPage() {
 
 function ProviderDetail() {
   const params = useParams<{ providerType: string; id: string }>();
+  const searchParams = useSearchParams();
+  const sampleRoute = searchParams.get("source") === "sample";
   const providerType = params.providerType as ProviderType;
   const id = Number(params.id);
   const invalidParams =
@@ -43,7 +45,7 @@ function ProviderDetail() {
     !Number.isInteger(id) ||
     id < 1;
   const requestKey = `${providerType}:${id}`;
-  const fictionalProvider = invalidParams ? null : getFictionalProvider(providerType, id);
+  const fictionalProvider = invalidParams || !sampleRoute ? null : getFictionalProvider(providerType, id);
   const [apiResult, setApiResult] = useState<{
     key: string;
     provider: ProviderDirectoryItem | null;
@@ -51,7 +53,7 @@ function ProviderDetail() {
   } | null>(null);
 
   useEffect(() => {
-    if (invalidParams) return;
+    if (invalidParams || sampleRoute) return;
     let active = true;
     getProvider(providerType, id)
       .then((result) => {
@@ -64,12 +66,12 @@ function ProviderDetail() {
     return () => {
       active = false;
     };
-  }, [id, invalidParams, fictionalProvider, params.id, params.providerType, providerType, requestKey]);
+  }, [id, invalidParams, params.id, params.providerType, providerType, requestKey, sampleRoute]);
 
   const liveProvider = apiResult?.key === requestKey ? apiResult.provider : null;
-  const provider = liveProvider ?? fictionalProvider;
-  const loading = !invalidParams && apiResult?.key !== requestKey;
-  const error = apiResult?.key === requestKey && apiResult.error && !fictionalProvider;
+  const provider = sampleRoute ? fictionalProvider : liveProvider;
+  const loading = !invalidParams && !sampleRoute && apiResult?.key !== requestKey;
+  const error = !sampleRoute && apiResult?.key === requestKey && apiResult.error;
 
   return (
     <section className="px-4 py-8 sm:py-12">
@@ -101,7 +103,7 @@ function ProviderDetail() {
               <Badge variant={provider.is_verified ? "verified" : "unverified"}>
                 {provider.is_verified ? "Verified" : "Unverified"}
               </Badge>
-              {provider.is_demo && <Badge variant="info">Sample data</Badge>}
+              {provider.is_demo && <Badge variant="info">Demo only · not a real provider</Badge>}
             </div>
             <h1 className="mt-2 break-words text-3xl font-bold text-ink">
               {provider.name}
@@ -114,7 +116,9 @@ function ProviderDetail() {
             </p>
             {provider.provider_type === "doctor" && (
               <div className="mt-4">
-                {liveProvider?.provider_type === "doctor" &&
+                {!sampleRoute &&
+                liveProvider?.provider_type === "doctor" &&
+                !liveProvider.is_demo &&
                 hasBookableDoctorSchedule(liveProvider.schedule) &&
                 liveProvider.consultation_fee != null &&
                 liveProvider.hospital_id &&

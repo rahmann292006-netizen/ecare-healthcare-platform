@@ -162,6 +162,8 @@ function FindDirectory() {
   const specialityFilterSupported = providerType !== "lab" && providerType !== "opd";
   const pageStart = total === 0 ? 0 : offset + 1;
   const pageEnd = Math.min(offset + providers.length, total);
+  const apiProviders = providers.filter((provider) => !provider.is_demo);
+  const demoProviders = providers.filter((provider) => provider.is_demo);
   const hasFilters = Boolean(providerType || specialityId || locality || search);
 
   return (
@@ -171,8 +173,7 @@ function FindDirectory() {
           <p className="mb-2 text-sm font-medium text-teal-700">Provider directory</p>
           <h1 className="text-3xl font-bold text-ink">Find healthcare near you</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-              Search hospitals, doctors, diagnostic labs, and OPDs. Fictional sample
-              listings are marked; live API records are included when available.
+              Search hospitals, doctors, diagnostic labs, and OPDs. API-backed and fictional demo listings are shown separately; API-backed records may still be unverified.
           </p>
         </header>
 
@@ -330,7 +331,7 @@ function FindDirectory() {
         ) : !loading && providers.length === 0 ? (
           <div className="rounded-[var(--radius-card)] border border-solid border-border bg-background p-8 text-center shadow-[var(--shadow-card)] sm:p-12">
             <h3 className="text-lg font-semibold text-ink">
-              {hasFilters ? "No matching demo providers found in this location." : "No provider listings available yet"}
+              {hasFilters ? "No provider listings match these filters." : "No provider listings available yet"}
             </h3>
             <p className="mx-auto mt-2 max-w-xl text-sm text-ink-muted">
               {hasFilters
@@ -348,14 +349,25 @@ function FindDirectory() {
             )}
           </div>
         ) : (
-          <div aria-busy={loading} className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {providers.map((provider) => (
-              <ProviderCard
-                key={`${provider.provider_type}-${provider.id}`}
-                provider={provider}
-                typeLabel={providerLabels[provider.provider_type]}
-              />
-            ))}
+          <div aria-busy={loading} className="space-y-8">
+            {apiProviders.length > 0 && (
+              <section aria-labelledby="api-provider-listings">
+                <h2 id="api-provider-listings" className="mb-1 text-lg font-semibold text-ink">API-backed listings</h2>
+                <p className="mb-3 text-sm text-ink-muted">Source and verification status appear on each listing. API-backed does not mean verified.</p>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {apiProviders.map((provider) => <ProviderCard key={`${provider.provider_type}-${provider.id}`} provider={provider} typeLabel={providerLabels[provider.provider_type]} />)}
+                </div>
+              </section>
+            )}
+            {demoProviders.length > 0 && (
+              <section aria-labelledby="demo-provider-listings">
+                <h2 id="demo-provider-listings" className="mb-1 text-lg font-semibold text-ink">Demo/sample listings — fictional, not real providers</h2>
+                <p className="mb-3 text-sm text-ink-muted">These records are for display only. They cannot be booked or used as real provider information.</p>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {demoProviders.map((provider) => <ProviderCard key={`${provider.provider_type}-${provider.id}`} provider={provider} typeLabel={providerLabels[provider.provider_type]} />)}
+                </div>
+              </section>
+            )}
           </div>
         )}
 

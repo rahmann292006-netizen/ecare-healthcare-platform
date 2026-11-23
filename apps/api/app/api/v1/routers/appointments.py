@@ -99,6 +99,11 @@ def get_doctor_appointment_availability(
         "slots": [],
         "fully_booked": False,
     }
+    if doctor.is_demo:
+        return DoctorAppointmentAvailability(
+            **base,
+            message="Demo/sample doctor records cannot be booked.",
+        )
     if (
         not isinstance(schedule, dict)
         or doctor.consultation_fee is None
@@ -306,6 +311,8 @@ def create_demo_appointment(
     doctor = db.query(Doctor).options(joinedload(Doctor.hospital)).filter(Doctor.id == request.doctor_id, Doctor.is_active.is_(True)).with_for_update().first()
     if doctor is None:
         raise HTTPException(status_code=404, detail="Doctor listing is not available in the provider API")
+    if doctor.is_demo:
+        raise HTTPException(status_code=409, detail="Demo/sample doctor records cannot be booked")
     if doctor.hospital is None or not doctor.hospital.city or not doctor.hospital.state:
         raise HTTPException(status_code=409, detail="This doctor has no complete hospital location in the provider record")
     city, state = doctor.hospital.city, doctor.hospital.state

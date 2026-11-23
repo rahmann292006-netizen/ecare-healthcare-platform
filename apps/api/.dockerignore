@@ -1,9 +1,27 @@
+# Never send local environment files or credentials to the remote image builder.
 .env
 .env.*
+
+# Exclude developer and test artifacts.
+.git
 .venv
+.venv-*
 venv
 __pycache__
 *.py[cod]
 *.bak
 .pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
 tests
+docs
+scripts
+
+# Keep local database exports out of the build context.
+backups
+data
+*.sql
+*.dump
+*.backup

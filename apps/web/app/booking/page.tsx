@@ -82,7 +82,11 @@ function BookingForm() {
 
     getProvider("doctor", doctorId)
       .then((record) => {
-        if (active) setDoctorResult({ id: doctorId, doctor: record, error: null });
+        if (active) setDoctorResult({
+          id: doctorId,
+          doctor: record.is_demo ? null : record,
+          error: record.is_demo ? "Demo/sample doctors are fictional and cannot be booked." : null,
+        });
       })
       .catch(() => {
         if (active) {
@@ -153,6 +157,7 @@ function BookingForm() {
 
   const hasBookingPrerequisites = Boolean(
     doctor?.provider_type === "doctor" &&
+    !doctor.is_demo &&
     hasBookableDoctorSchedule(doctor.schedule) &&
     consultationDays.length > 0 &&
     doctor.consultation_fee !== null &&
@@ -188,7 +193,7 @@ function BookingForm() {
       setError("You must be signed in to request an appointment.");
       return;
     }
-    if (!doctor || !hasBookingPrerequisites) {
+    if (!doctor || doctor.is_demo || !hasBookingPrerequisites) {
       setError("Currently unavailable for online appointment booking.");
       return;
     }

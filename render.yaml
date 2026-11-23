@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: ecare-api
+    runtime: docker
+    plan: 0.5c-512mb
+    region: singapore
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      # Match the port exposed by the current Dockerfile.
+      - key: PORT
+        value: "8000"
+      - key: ECARE_ENVIRONMENT
+        value: production
+      - key: ECARE_DEV_MODE
+        value: "false"
+      - key: ECARE_SIMULATED_PAYMENTS_ENABLED
+        value: "false"
+      - key: ECARE_ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      # Set these in the Render creation flow; never commit their values.
+      - key: DATABASE_URL
+        sync: false
+      - key: ECARE_CORS_ORIGINS
+        sync: false
+      - key: ECARE_SECRET_KEY
+        generateValue: true
